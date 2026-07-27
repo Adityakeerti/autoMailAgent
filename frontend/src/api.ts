@@ -30,7 +30,13 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ detail: "Request failed" }));
-    throw new Error(errorData.detail || `HTTP Error ${response.status}`);
+    let msg = "Request failed";
+    if (typeof errorData.detail === "string") {
+      msg = errorData.detail;
+    } else if (Array.isArray(errorData.detail)) {
+      msg = errorData.detail.map((e: any) => `${e.loc?.slice(-1)[0] || 'field'}: ${e.msg}`).join("; ");
+    }
+    throw new Error(msg);
   }
 
   if (response.status === 204) {
