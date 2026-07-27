@@ -1,5 +1,5 @@
 import os
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
@@ -26,7 +26,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
-# Enable CORS for Vercel Frontend and Local Development
+# Enable CORS for Vercel Frontend and Local Development (Handles pre-flight OPTIONS requests)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -35,7 +35,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# API Routers (Registered FIRST so API routes take precedence)
+# API Routers
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(settings.router)
@@ -46,10 +46,21 @@ app.include_router(contacts.router)
 app.include_router(scrapers.router)
 app.include_router(queue.router)
 
-# Mount Frontend Static Bundle at Root (Registered LAST)
+# Mount Frontend Assets & Serve SPA Index
 frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
+assets_dir = os.path.join(frontend_dist, "assets")
+
+if os.path.exists(assets_dir):
+    app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+
 if os.path.exists(frontend_dist):
-    app.mount("/", StaticFiles(directory=frontend_dist, html=True), name="frontend")
+    @app.get("/{full_path:path}")
+    async def serve_frontend(full_path: str):
+        # Ignore API calls if they somehow reach here via GET
+        index_file = os.path.join(frontend_dist, "index.html")
+        if os.path.exists(index_file):
+            return FileResponse(index_file)
+        return {"status": "ok", "service": "AutoMail Engine"}
 
 if __name__ == "__main__":
     import uvicorn
