@@ -9,6 +9,13 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "super-secret-jwt-key-change-in-production-12345"
     ENCRYPTION_KEY: str = ""
 
+    # Google OAuth credentials
+    GOOGLE_CLIENT_ID: str = ""
+    GOOGLE_CLIENT_SECRET: str = ""
+
+    # Shared System LinkedIn Scraping Cookie (Pool for all users)
+    SHARED_LINKEDIN_COOKIE: str = ""
+
     # LLM Keys
     GROQ_API_KEY: str = ""
     OLLAMA_API_KEY: str = ""

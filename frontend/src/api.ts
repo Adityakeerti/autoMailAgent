@@ -50,6 +50,7 @@ export const api = {
   // Auth
   signup: (data: any) => request<{ access_token: string }>("/auth/signup", { method: "POST", body: JSON.stringify(data) }),
   login: (data: any) => request<{ access_token: string }>("/auth/login", { method: "POST", body: JSON.stringify(data) }),
+  googleAuth: (email: string) => request<{ access_token: string }>("/auth/google", { method: "POST", body: JSON.stringify({ email }) }),
 
   // Settings
   getSettings: () => request<any>("/settings"),

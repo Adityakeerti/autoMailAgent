@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Lock, Mail, Clock, Key } from 'lucide-react';
+import { Save, Mail, Clock, Key, Globe, CheckCircle } from 'lucide-react';
 import { api } from '../api';
 
 export const SettingsView: React.FC = () => {
@@ -39,6 +39,21 @@ export const SettingsView: React.FC = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleConnectGoogleGmail = () => {
+    const email = prompt("Enter your Gmail address to connect:", st.smtp_user || "you@gmail.com");
+    if (!email) return;
+    setSt({
+      ...st,
+      smtp_host: "smtp.gmail.com",
+      smtp_port: 587,
+      smtp_user: email,
+      imap_host: "imap.gmail.com",
+      imap_port: 993,
+      imap_user: email
+    });
+    setMsg("Gmail host and port settings auto-filled! Enter your 16-character App Password below and click Save.");
   };
 
   return (
@@ -88,9 +103,9 @@ export const SettingsView: React.FC = () => {
             <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <Mail size={18} color="var(--primary)" /> SMTP Outreach Sender Credentials
             </h3>
-            <span style={{ fontSize: '12px', color: 'var(--outline)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-              <Lock size={12} /> Encrypted at rest (Fernet)
-            </span>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={handleConnectGoogleGmail}>
+              <Globe size={14} color="#4285F4" /> Auto-Fill Gmail Settings
+            </button>
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
             <div className="form-group">
@@ -139,13 +154,21 @@ export const SettingsView: React.FC = () => {
           </div>
         </div>
 
-        {/* LinkedIn Cookie */}
+        {/* LinkedIn Pool Configuration */}
         <div className="card">
           <div className="card-header">
-            <h3 className="card-title">Dedicated LinkedIn Account Cookie</h3>
+            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              LinkedIn Lead Scraping System
+            </h3>
+            <span className="chip chip-personalized" style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <CheckCircle size={12} /> System Account Active for All Users
+            </span>
           </div>
+          <p style={{ fontSize: '13px', color: 'var(--on-surface-variant)', marginBottom: '12px' }}>
+            AutoMail includes a system-level dedicated LinkedIn scraping worker for all users. You can perform searches based on company, role, or link choice. Optionally override below with a custom `li_at` cookie.
+          </p>
           <div className="form-group">
-            <label className="form-label">li_at Cookie Secret {st.has_linkedin_cookie ? '(Saved)' : ''}</label>
+            <label className="form-label">Custom li_at Cookie Override (Optional) {st.has_linkedin_cookie ? '(Saved)' : ''}</label>
             <input type="password" className="form-input" placeholder="AQED..." value={st.linkedin_cookie || ''} onChange={(e) => setSt({ ...st, linkedin_cookie: e.target.value })} />
           </div>
         </div>

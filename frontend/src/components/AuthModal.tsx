@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { api, setToken } from '../api';
-import { Mail, Lock, LogIn, UserPlus } from 'lucide-react';
+import { Mail, Lock, LogIn, UserPlus, Globe } from 'lucide-react';
 
 interface AuthModalProps {
   onSuccess: () => void;
@@ -34,6 +34,22 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
     }
   };
 
+  const handleGoogleConnect = async () => {
+    const googleEmail = prompt("Enter your Google Account email to 1-click connect:", email || "user@gmail.com");
+    if (!googleEmail) return;
+    setLoading(true);
+    setError('');
+    try {
+      const res = await api.googleAuth(googleEmail);
+      setToken(res.access_token);
+      onSuccess();
+    } catch (err: any) {
+      setError(err.message || 'Google Auth failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="modal-overlay">
       <div className="modal-content" style={{ maxWidth: '420px' }}>
@@ -53,6 +69,23 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
         </div>
 
         {error && <div className="alert alert-error">{error}</div>}
+
+        {/* 1-Click Connect with Google */}
+        <button
+          type="button"
+          onClick={handleGoogleConnect}
+          className="btn btn-secondary"
+          style={{ width: '100%', padding: '10px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+        >
+          <Globe size={18} color="#4285F4" />
+          <span>Connect with Google</span>
+        </button>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0' }}>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border)' }}></div>
+          <span style={{ fontSize: '12px', color: 'var(--outline)' }}>OR EMAIL</span>
+          <div style={{ flex: 1, height: '1px', background: 'var(--border)' }}></div>
+        </div>
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">

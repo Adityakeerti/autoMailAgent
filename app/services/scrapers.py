@@ -89,8 +89,11 @@ class ScraperService:
             }
 
     async def scrape_linkedin(self, linkedin_cookie_enc: Optional[str], profile_or_job_url: str) -> Dict[str, Any]:
-        """LinkedIn scraper using user's dedicated cookie (rate limited)"""
-        cookie = decrypt_secret(linkedin_cookie_enc)
+        """LinkedIn scraper using system shared account cookie or user custom cookie (rate limited)"""
+        cookie = decrypt_secret(linkedin_cookie_enc) if linkedin_cookie_enc else None
+        if not cookie and settings.SHARED_LINKEDIN_COOKIE:
+            cookie = settings.SHARED_LINKEDIN_COOKIE
+
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
         if cookie:
             headers["Cookie"] = f"li_at={cookie}"
@@ -103,6 +106,7 @@ class ScraperService:
                 "source": "linkedin",
                 "url": profile_or_job_url,
                 "found_emails": emails,
+                "using_system_account": not bool(linkedin_cookie_enc),
                 "raw_text": html[:1000]
             }
 
