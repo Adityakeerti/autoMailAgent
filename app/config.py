@@ -9,9 +9,10 @@ class Settings(BaseSettings):
     JWT_SECRET: str = "super-secret-jwt-key-change-in-production-12345"
     ENCRYPTION_KEY: str = ""
 
-    # Google OAuth credentials
-    GOOGLE_CLIENT_ID: str = ""
-    GOOGLE_CLIENT_SECRET: str = ""
+    # Google OAuth2 credentials & Redirect URI
+    GOOGLE_CLIENT_ID: str = "1098492043422-dummyclientid.apps.googleusercontent.com"
+    GOOGLE_CLIENT_SECRET: str = "GOCSPX-dummyclientsecret"
+    GOOGLE_REDIRECT_URI: str = "http://127.0.0.1:8000/auth/google/callback"
 
     # Shared System LinkedIn Scraping Cookie (Pool for all users)
     SHARED_LINKEDIN_COOKIE: str = ""
@@ -29,6 +30,5 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# Ensure storage dir exists if using local storage
 if settings.STORAGE_BUCKET_URL.startswith("local://"):
     os.makedirs("./storage_data", exist_ok=True)

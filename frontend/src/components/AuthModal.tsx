@@ -34,19 +34,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
     }
   };
 
-  const handleGoogleConnect = async () => {
-    const googleEmail = prompt("Enter your Google Account email to 1-click connect:", email || "user@gmail.com");
-    if (!googleEmail) return;
-    setLoading(true);
+  const handleGoogleOAuthConnect = async () => {
     setError('');
     try {
-      const res = await api.googleAuth(googleEmail);
-      setToken(res.access_token);
-      onSuccess();
+      const res = await api.getGoogleAuthUrl();
+      // Redirect browser to official Google OAuth consent screen
+      window.location.href = res.url;
     } catch (err: any) {
-      setError(err.message || 'Google Auth failed');
-    } finally {
-      setLoading(false);
+      setError('Failed to launch Google OAuth: ' + err.message);
     }
   };
 
@@ -70,15 +65,15 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
 
         {error && <div className="alert alert-error">{error}</div>}
 
-        {/* 1-Click Connect with Google */}
+        {/* Official Google OAuth2 Redirect Button */}
         <button
           type="button"
-          onClick={handleGoogleConnect}
+          onClick={handleGoogleOAuthConnect}
           className="btn btn-secondary"
           style={{ width: '100%', padding: '10px', marginBottom: '16px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
         >
           <Globe size={18} color="#4285F4" />
-          <span>Connect with Google</span>
+          <span>Connect with Google (Official OAuth2)</span>
         </button>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px', margin: '16px 0' }}>

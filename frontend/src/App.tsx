@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getToken, api } from './api';
+import { getToken, setToken, api } from './api';
 import { AuthModal } from './components/AuthModal';
 import { Sidebar } from './components/Sidebar';
 import { DashboardView } from './components/DashboardView';
@@ -17,6 +17,17 @@ export function App() {
   const [queue, setQueue] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>({});
   const [userEmail, setUserEmail] = useState<string>('');
+
+  // Handle Google OAuth Callback redirect query param ?token=...
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tokenFromUrl = params.get('token');
+    if (tokenFromUrl) {
+      setToken(tokenFromUrl);
+      setAuthenticated(true);
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const loadAllData = async () => {
     if (!getToken()) return;
