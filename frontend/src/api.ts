@@ -24,8 +24,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   });
 
   if (response.status === 401) {
-    removeToken();
-    window.location.reload();
+    if (!endpoint.startsWith("/auth/")) {
+      removeToken();
+    }
   }
 
   if (!response.ok) {
