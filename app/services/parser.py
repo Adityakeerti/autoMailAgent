@@ -70,7 +70,11 @@ def extract_text_from_file_bytes(file_bytes: bytes, filename: str) -> str:
     except Exception:
         return ""
 
-async def parse_and_populate_resume(resume_id: int, db: AsyncSession):
+async def parse_and_populate_resume(resume_id: int, db: AsyncSession, mode: str = "keep_unique"):
+    """
+    Parse resume and populate user context layer.
+    :param mode: 'replace' (remove old info and replace) OR 'keep_unique' (keep existing and append unique items)
+    """
     res = await db.execute(select(Resume).where(Resume.id == resume_id))
     resume = res.scalar_one_or_none()
     if not resume:
@@ -94,14 +98,19 @@ async def parse_and_populate_resume(resume_id: int, db: AsyncSession):
             json_mode=True
         )
 
-        # Sanitize JSON string if wrapped in backticks
         json_str = llm_response.strip()
         if json_str.startswith("```"):
             json_str = json_str.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
 
         data = json.loads(json_str)
-
         user_id = resume.user_id
+
+        if mode == "replace":
+            # Clear old context items if replace mode chosen
+            await db.execute(delete(ContextExperience).where(ContextExperience.user_id == user_id))
+            await db.execute(delete(ContextProject).where(ContextProject.user_id == user_id))
+            await db.execute(delete(ContextAchievement).where(ContextAchievement.user_id == user_id))
+            await db.commit()
 
         # Update profile
         prof_data = data.get("profile", {})
@@ -112,29 +121,50 @@ async def parse_and_populate_resume(resume_id: int, db: AsyncSession):
             db.add(cp)
         
         if prof_data.get("role_title"): cp.role_title = prof_data.get("role_title")
-        if prof_data.get("grad_year"): cp.grad_year = prof_data.get("grad_year")
+        if prof_data.get("grad_year"): cp.grad_year = str(prof_data.get("grad_year"))
         if prof_data.get("portfolio_url"): cp.portfolio_url = prof_data.get("portfolio_url")
         if prof_data.get("github_url"): cp.github_url = prof_data.get("github_url")
         if prof_data.get("email"): cp.email = prof_data.get("email")
 
-        # Replace or append experience
+        # Get existing items to prevent duplicates if mode == 'keep_unique'
+        existing_exp_titles = set()
+        existing_proj_titles = set()
+        existing_ach_texts = set()
+
+        if mode == "keep_unique":
+            res_e = await db.execute(select(ContextExperience.title).where(ContextExperience.user_id == user_id))
+            existing_exp_titles = set(t.lower() for (t,) in res_e.all())
+
+            res_p = await db.execute(select(ContextProject.title).where(ContextProject.user_id == user_id))
+            existing_proj_titles = set(t.lower() for (t,) in res_p.all())
+
+            res_a = await db.execute(select(ContextAchievement.text).where(ContextAchievement.user_id == user_id))
+            existing_ach_texts = set(t.lower() for (t,) in res_a.all())
+
+        # Experience
         exp_list = data.get("experience", [])
         for item in exp_list:
+            title = item.get("title", "Experience")
+            if mode == "keep_unique" and title.lower() in existing_exp_titles:
+                continue
             db.add(ContextExperience(
                 user_id=user_id,
-                title=item.get("title", "Experience"),
+                title=title,
                 dates=item.get("dates"),
                 one_liner=item.get("one_liner"),
                 stack=item.get("stack", []),
                 tags=item.get("tags", [])
             ))
 
-        # Replace or append projects
+        # Projects
         proj_list = data.get("projects", [])
         for item in proj_list:
+            title = item.get("title", "Project")
+            if mode == "keep_unique" and title.lower() in existing_proj_titles:
+                continue
             db.add(ContextProject(
                 user_id=user_id,
-                title=item.get("title", "Project"),
+                title=title,
                 dates=item.get("dates"),
                 one_liner=item.get("one_liner"),
                 stack=item.get("stack", []),
@@ -147,9 +177,12 @@ async def parse_and_populate_resume(resume_id: int, db: AsyncSession):
         # Achievements
         ach_list = data.get("achievements", [])
         for item in ach_list:
+            text = item.get("text") if isinstance(item, dict) else str(item)
+            if mode == "keep_unique" and text.lower() in existing_ach_texts:
+                continue
             db.add(ContextAchievement(
                 user_id=user_id,
-                text=item.get("text") if isinstance(item, dict) else str(item)
+                text=text
             ))
 
         resume.parsed_status = "done"

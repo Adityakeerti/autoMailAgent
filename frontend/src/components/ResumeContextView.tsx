@@ -11,6 +11,7 @@ export const ResumeContextView: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
   const [file, setFile] = useState<File | null>(null);
+  const [parseMode, setParseMode] = useState<string>('keep_unique');
 
   // New Item States
   const [newExp, setNewExp] = useState({ title: '', dates: '', one_liner: '', stack: '', tags: '' });
@@ -46,8 +47,8 @@ export const ResumeContextView: React.FC = () => {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      await api.uploadResume(formData);
-      setMsg('Resume uploaded! Background parser triggered using High-Tier LLM.');
+      await api.uploadResume(formData, parseMode);
+      setMsg(`Resume uploaded! LLM Parser running in '${parseMode === 'replace' ? 'Remove old & replace' : 'Keep unique'}' mode.`);
       setFile(null);
       await loadData();
     } catch (err: any) {
@@ -115,18 +116,46 @@ export const ResumeContextView: React.FC = () => {
             <FileText size={18} color="var(--primary)" /> Resume Parser (LLM Auto-Extraction)
           </h3>
         </div>
-        <form onSubmit={handleUploadResume} style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-          <input
-            type="file"
-            accept=".pdf,.txt,.doc,.docx"
-            className="form-input"
-            onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
-            required
-            style={{ flex: 1 }}
-          />
-          <button type="submit" className="btn btn-primary" disabled={loading}>
-            <Upload size={16} /> {loading ? 'Uploading...' : 'Upload & Parse'}
-          </button>
+        <form onSubmit={handleUploadResume}>
+          <div className="form-group" style={{ marginBottom: '12px' }}>
+            <label className="form-label">Parsing Mode Option</label>
+            <div style={{ display: 'flex', gap: '16px', fontSize: '14px' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="parseMode"
+                  value="keep_unique"
+                  checked={parseMode === 'keep_unique'}
+                  onChange={() => setParseMode('keep_unique')}
+                />
+                <strong>Keep existing entries & add unique items</strong>
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <input
+                  type="radio"
+                  name="parseMode"
+                  value="replace"
+                  checked={parseMode === 'replace'}
+                  onChange={() => setParseMode('replace')}
+                />
+                <strong style={{ color: 'var(--error)' }}>Remove old info & replace with new resume</strong>
+              </label>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+            <input
+              type="file"
+              accept=".pdf,.txt,.doc,.docx"
+              className="form-input"
+              onChange={(e) => setFile(e.target.files ? e.target.files[0] : null)}
+              required
+              style={{ flex: 1 }}
+            />
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              <Upload size={16} /> {loading ? 'Uploading...' : 'Upload & Parse'}
+            </button>
+          </div>
         </form>
 
         {resumes.length > 0 && (

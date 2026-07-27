@@ -1,5 +1,5 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Query
 from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -20,19 +20,23 @@ class ResumeResponse(BaseModel):
     uploaded_at: str
     parsed_status: str
 
-async def _bg_parse_wrapper(resume_id: int):
+async def _bg_parse_wrapper(resume_id: int, mode: str):
     async with AsyncSessionLocal() as db:
-        await parse_and_populate_resume(resume_id, db)
+        await parse_and_populate_resume(resume_id, db, mode=mode)
 
 @router.post("/upload", response_model=ResumeResponse)
 async def upload_resume(
     background_tasks: BackgroundTasks,
     file: UploadFile = File(...),
+    mode: str = Query("keep_unique", description="Parse mode: 'replace' (remove old info) or 'keep_unique' (keep unique items)"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
+
+    if mode not in ["replace", "keep_unique"]:
+        raise HTTPException(status_code=400, detail="Invalid mode. Must be 'replace' or 'keep_unique'")
 
     file_path = await storage_service.save_resume(current_user.id, file)
 
@@ -46,8 +50,8 @@ async def upload_resume(
     await db.commit()
     await db.refresh(resume)
 
-    # Trigger background parse job
-    background_tasks.add_task(_bg_parse_wrapper, resume.id)
+    # Trigger background parse job with selected mode
+    background_tasks.add_task(_bg_parse_wrapper, resume.id, mode)
 
     return ResumeResponse(
         id=resume.id,
@@ -78,6 +82,7 @@ async def list_resumes(current_user: User = Depends(get_current_user), db: Async
 async def trigger_parse(
     resume_id: int,
     background_tasks: BackgroundTasks,
+    mode: str = Query("keep_unique", description="Parse mode: 'replace' or 'keep_unique'"),
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
@@ -90,7 +95,7 @@ async def trigger_parse(
     await db.commit()
     await db.refresh(resume)
 
-    background_tasks.add_task(_bg_parse_wrapper, resume.id)
+    background_tasks.add_task(_bg_parse_wrapper, resume.id, mode)
 
     return ResumeResponse(
         id=resume.id,

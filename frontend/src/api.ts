@@ -56,9 +56,9 @@ export const api = {
   updateSettings: (data: any) => request<any>("/settings", { method: "PUT", body: JSON.stringify(data) }),
 
   // Resumes & Context
-  uploadResume: (formData: FormData) => request<any>("/resume/upload", { method: "POST", body: formData }),
+  uploadResume: (formData: FormData, mode: string = "keep_unique") => request<any>(`/resume/upload?mode=${mode}`, { method: "POST", body: formData }),
   listResumes: () => request<any[]>("/resume"),
-  triggerParse: (id: number) => request<any>(`/resume/${id}/parse`, { method: "POST" }),
+  triggerParse: (id: number, mode: string = "keep_unique") => request<any>(`/resume/${id}/parse?mode=${mode}`, { method: "POST" }),
 
   getProfile: () => request<any>("/context/profile"),
   updateProfile: (data: any) => request<any>("/context/profile", { method: "PUT", body: JSON.stringify(data) }),
