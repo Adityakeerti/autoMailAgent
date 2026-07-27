@@ -63,7 +63,7 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
     res = await db.execute(select(User).where(User.email == clean_email))
     user = res.scalar_one_or_none()
     if not user or not verify_password(credentials.password, user.password_hash):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="Invalid email or password")
 
     token = create_access_token(user_id=user.id, email=user.email)
     return {"access_token": token, "token_type": "bearer"}
@@ -76,7 +76,7 @@ async def google_auth(req: GoogleAuthRequest, db: AsyncSession = Depends(get_db)
     user = res.scalar_one_or_none()
 
     if not user:
-        # Create user automatically on Google auth
+        # Create user automatically on Google OAuth
         user = User(
             email=clean_email,
             password_hash=hash_password(f"google_oauth_{clean_email}")
@@ -85,8 +85,18 @@ async def google_auth(req: GoogleAuthRequest, db: AsyncSession = Depends(get_db)
         await db.commit()
         await db.refresh(user)
 
-        db.add(Setting(user_id=user.id, smtp_user=clean_email, imap_user=clean_email, smtp_host="smtp.gmail.com", imap_host="imap.gmail.com"))
+        # Seed pre-configured Gmail settings
+        db.add(Setting(
+            user_id=user.id,
+            smtp_user=clean_email,
+            imap_user=clean_email,
+            smtp_host="smtp.gmail.com",
+            smtp_port=587,
+            imap_host="imap.gmail.com",
+            imap_port=993
+        ))
 
+        # Seed default templates
         for tmpl in DEFAULT_TEMPLATES:
             db.add(Template(
                 user_id=user.id,
