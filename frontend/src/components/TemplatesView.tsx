@@ -1,20 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Edit2, Trash2, Check, HelpCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Check, HelpCircle, Loader2 } from 'lucide-react';
 import { api } from '../api';
+import { SkeletonCard } from './Skeleton';
 
-export const TemplatesView: React.FC = () => {
+interface TemplatesViewProps {
+  onLoadingChange?: (loading: boolean) => void;
+}
+
+export const TemplatesView: React.FC<TemplatesViewProps> = ({ onLoadingChange }) => {
   const [templates, setTemplates] = useState<any[]>([]);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [savingTemplate, setSavingTemplate] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<any | null>(null);
   const [newCategory, setNewCategory] = useState('');
   const [newSubject, setNewSubject] = useState('');
   const [newBody, setNewBody] = useState('');
 
   const loadTemplates = async () => {
+    onLoadingChange?.(true);
     try {
       const items = await api.listTemplates();
       setTemplates(items);
     } catch (e: any) {
       console.error(e);
+    } finally {
+      setInitialLoading(false);
+      onLoadingChange?.(false);
     }
   };
 
@@ -24,6 +35,7 @@ export const TemplatesView: React.FC = () => {
 
   const handleSaveTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSavingTemplate(true);
     try {
       if (editingTemplate?.id) {
         await api.updateTemplate(editingTemplate.id, {
@@ -45,6 +57,8 @@ export const TemplatesView: React.FC = () => {
       await loadTemplates();
     } catch (err: any) {
       console.error(err);
+    } finally {
+      setSavingTemplate(false);
     }
   };
 
@@ -107,28 +121,42 @@ export const TemplatesView: React.FC = () => {
               <label className="form-label">Body Template</label>
               <textarea className="form-textarea" style={{ minHeight: '140px' }} value={newBody} onChange={(e) => setNewBody(e.target.value)} required />
             </div>
-            <button type="submit" className="btn btn-primary"><Check size={16} /> Save Template</button>
+            <button type="submit" className="btn btn-primary" disabled={savingTemplate}>
+              {savingTemplate ? (
+                <><Loader2 size={16} className="spin-icon" /> Saving...</>
+              ) : (
+                <><Check size={16} /> Save Template</>
+              )}
+            </button>
           </form>
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '16px' }}>
-        {templates.map((tmpl) => (
-          <div key={tmpl.id} className="card" style={{ marginBottom: 0 }}>
-            <div className="card-header">
-              <span className="chip chip-personalized">{tmpl.category}</span>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <button className="btn btn-secondary btn-sm" onClick={() => startEdit(tmpl)}><Edit2 size={14} /></button>
-                <button className="btn btn-secondary btn-sm" onClick={async () => { await api.deleteTemplate(tmpl.id); loadTemplates(); }}><Trash2 size={14} color="var(--error)" /></button>
+      {initialLoading ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '16px' }}>
+          <SkeletonCard height="180px" />
+          <SkeletonCard height="180px" />
+          <SkeletonCard height="180px" />
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '16px' }}>
+          {templates.map((tmpl) => (
+            <div key={tmpl.id} className="card" style={{ marginBottom: 0 }}>
+              <div className="card-header">
+                <span className="chip chip-personalized">{tmpl.category}</span>
+                <div style={{ display: 'flex', gap: '6px' }}>
+                  <button className="btn btn-secondary btn-sm" onClick={() => startEdit(tmpl)}><Edit2 size={14} /></button>
+                  <button className="btn btn-secondary btn-sm" onClick={async () => { if (window.confirm("Are you sure you want to delete this template?")) { await api.deleteTemplate(tmpl.id); loadTemplates(); } }}><Trash2 size={14} color="var(--error)" /></button>
+                </div>
+              </div>
+              <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>{tmpl.subject_template}</div>
+              <div style={{ fontSize: '13px', color: 'var(--on-surface-variant)', background: 'var(--surface-container-low)', padding: '10px', borderRadius: '4px', whiteSpace: 'pre-wrap', maxHeight: '140px', overflowY: 'auto' }}>
+                {tmpl.body_template}
               </div>
             </div>
-            <div style={{ fontSize: '13px', fontWeight: 600, marginBottom: '6px' }}>{tmpl.subject_template}</div>
-            <div style={{ fontSize: '13px', color: 'var(--on-surface-variant)', background: 'var(--surface-container-low)', padding: '10px', borderRadius: '4px', whiteSpace: 'pre-wrap', maxHeight: '140px', overflowY: 'auto' }}>
-              {tmpl.body_template}
-            </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 };
