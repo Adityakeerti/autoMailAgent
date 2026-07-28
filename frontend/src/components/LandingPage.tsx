@@ -390,7 +390,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
                   💬 Request via WhatsApp
                 </a>
                 <a
-                  href={requestEmail ? `mailto:adityacodes404@gmail.com?subject=GetNewJob%20AI%20Whitelist%20Request&body=Please%20whitelist%20my%20email%3A%20${encodeURIComponent(requestEmail)}` : '#'}
+                  href={requestEmail ? `https://mail.google.com/mail/?view=cm&fs=1&to=adityacodes404@gmail.com&su=GetNewJob%20AI%20Whitelist%20Request&body=Please%20whitelist%20my%20email%3A%20${encodeURIComponent(requestEmail)}` : '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
                   className="btn btn-secondary btn-sm"
                   style={{
                     justifyContent: 'center',
