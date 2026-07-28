@@ -38,6 +38,7 @@ class SettingsResponse(BaseModel):
     imap_user: Optional[str] = None
     has_imap_password: bool = False
 
+    has_google_oauth: bool = False  # True when user connected via Google OAuth (XOAUTH2 sending available)
     has_linkedin_cookie: bool = False
 
     send_mode: str
@@ -63,6 +64,7 @@ async def get_settings(current_user: User = Depends(get_current_user), db: Async
         imap_port=st.imap_port,
         imap_user=st.imap_user,
         has_imap_password=bool(st.imap_password_enc),
+        has_google_oauth=bool(st.google_refresh_token_enc),
         has_linkedin_cookie=bool(st.linkedin_cookie_enc),
         send_mode=st.send_mode,
         schedule_window=st.schedule_window,
@@ -108,6 +110,7 @@ async def update_settings(data: SettingsUpdate, current_user: User = Depends(get
         imap_port=st.imap_port,
         imap_user=st.imap_user,
         has_imap_password=bool(st.imap_password_enc),
+        has_google_oauth=bool(st.google_refresh_token_enc),
         has_linkedin_cookie=bool(st.linkedin_cookie_enc),
         send_mode=st.send_mode,
         schedule_window=st.schedule_window,

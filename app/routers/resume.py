@@ -58,7 +58,7 @@ async def upload_resume(
         user_id=resume.user_id,
         file_name=resume.file_name or "resume.pdf",
         file_url=resume.file_url,
-        uploaded_at=resume.uploaded_at.isoformat(),
+        uploaded_at=resume.uploaded_at.isoformat() + "Z",
         parsed_status=resume.parsed_status
     )
 
@@ -72,7 +72,7 @@ async def list_resumes(current_user: User = Depends(get_current_user), db: Async
             user_id=r.user_id,
             file_name=r.file_name or "resume.pdf",
             file_url=r.file_url,
-            uploaded_at=r.uploaded_at.isoformat(),
+            uploaded_at=r.uploaded_at.isoformat() + "Z",
             parsed_status=r.parsed_status
         )
         for r in items
@@ -102,6 +102,26 @@ async def trigger_parse(
         user_id=resume.user_id,
         file_name=resume.file_name or "resume.pdf",
         file_url=resume.file_url,
-        uploaded_at=resume.uploaded_at.isoformat(),
+        uploaded_at=resume.uploaded_at.isoformat() + "Z",
         parsed_status=resume.parsed_status
     )
+
+@router.delete("/{resume_id}", status_code=200)
+async def delete_resume(
+    resume_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    res = await db.execute(select(Resume).where(Resume.id == resume_id, Resume.user_id == current_user.id))
+    resume = res.scalar_one_or_none()
+    if not resume:
+        raise HTTPException(status_code=404, detail="Resume not found")
+
+    # Delete physical file from disk
+    storage_service.delete_resume_file(resume.file_url)
+
+    # Delete DB row
+    await db.delete(resume)
+    await db.commit()
+
+    return {"message": f"Resume {resume_id} deleted successfully"}
