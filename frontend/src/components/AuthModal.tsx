@@ -14,6 +14,7 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
   const [loading, setLoading] = useState(false);
   const [showGoogleWarning, setShowGoogleWarning] = useState(false);
   const [googleUrl, setGoogleUrl] = useState('');
+  const [requestEmail, setRequestEmail] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -144,14 +145,60 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onSuccess }) => {
 
         {showGoogleWarning && (
           <div className="modal-overlay" style={{ zIndex: 1100 }}>
-            <div className="modal-content" style={{ maxWidth: '400px', padding: '24px', textAlign: 'center' }}>
+            <div className="modal-content" style={{ maxWidth: '450px', padding: '24px', textAlign: 'center' }}>
               <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
               <h3 style={{ marginBottom: '12px', fontSize: '18px', fontWeight: 600 }}>Google Login Verification Pending</h3>
-              <p style={{ fontSize: '13px', color: 'var(--on-surface-variant)', lineHeight: '1.6', marginBottom: '20px' }}>
-                AutoMail's Google OAuth App is currently undergoing verification. Access is restricted to pre-approved/whitelisted email accounts (up to 100 users). 
-                <br/><br/>
-                If the administrator has not manually whitelisted your email address, your login attempt will fail.
+              <p style={{ fontSize: '13px', color: 'var(--on-surface-variant)', lineHeight: '1.6', marginBottom: '16px' }}>
+                AutoMail's Google OAuth App is currently undergoing verification. Access is restricted to pre-approved/whitelisted email accounts (up to 100 users).
               </p>
+
+              {/* Request Whitelisting Form */}
+              <div style={{ background: 'var(--surface-container-low)', padding: '16px', borderRadius: '8px', marginBottom: '20px', textAlign: 'left' }}>
+                <label className="form-label" style={{ marginBottom: '6px', fontSize: '12px' }}>Request Access (Enter your Email)</label>
+                <input
+                  type="email"
+                  className="form-input"
+                  style={{ width: '100%', marginBottom: '12px', fontSize: '13px' }}
+                  placeholder="yourname@gmail.com"
+                  value={requestEmail}
+                  onChange={(e) => setRequestEmail(e.target.value)}
+                />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                  <a
+                    href={requestEmail ? `https://wa.me/8809691824?text=Please%20whitelist%20my%20email%20address%3A%20${encodeURIComponent(requestEmail)}` : '#'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-secondary btn-sm"
+                    style={{ 
+                      justifyContent: 'center', 
+                      fontSize: '11px', 
+                      pointerEvents: requestEmail ? 'auto' : 'none', 
+                      opacity: requestEmail ? 1 : 0.6 
+                    }}
+                    onClick={(e) => {
+                      if (!requestEmail) e.preventDefault();
+                    }}
+                  >
+                    💬 Request via WhatsApp
+                  </a>
+                  <a
+                    href={requestEmail ? `mailto:adityacodes404@gmail.com?subject=AutoMail%20Whitelist%20Request&body=Please%20whitelist%20my%20email%3A%20${encodeURIComponent(requestEmail)}` : '#'}
+                    className="btn btn-secondary btn-sm"
+                    style={{ 
+                      justifyContent: 'center', 
+                      fontSize: '11px', 
+                      pointerEvents: requestEmail ? 'auto' : 'none', 
+                      opacity: requestEmail ? 1 : 0.6 
+                    }}
+                    onClick={(e) => {
+                      if (!requestEmail) e.preventDefault();
+                    }}
+                  >
+                    ✉️ Request via Email
+                  </a>
+                </div>
+              </div>
+
               <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowGoogleWarning(false)}>
                   Cancel
