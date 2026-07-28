@@ -184,8 +184,8 @@ async def signup(user_data: UserSignup, response: Response, db: AsyncSession = D
         key="token",
         value=token,
         httponly=True,
-        secure=False,  # Set secure=False for localhost/dev
-        samesite="lax",
+        secure=True,
+        samesite="none",
         max_age=7 * 24 * 3600
     )
     return {"access_token": token, "token_type": "bearer"}
@@ -204,8 +204,8 @@ async def login(credentials: UserLogin, response: Response, db: AsyncSession = D
         key="token",
         value=token,
         httponly=True,
-        secure=False,
-        samesite="lax",
+        secure=True,
+        samesite="none",
         max_age=7 * 24 * 3600
     )
     return {"access_token": token, "token_type": "bearer"}
@@ -302,8 +302,8 @@ async def google_auth_callback(code: str = Query(...), db: AsyncSession = Depend
         key="token",
         value=jwt_token,
         httponly=True,
-        secure=False,
-        samesite="lax",
+        secure=True,
+        samesite="none",
         max_age=7 * 24 * 3600
     )
     return response
