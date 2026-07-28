@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { getToken, setToken, api } from './api';
-import { AuthModal } from './components/AuthModal';
+import { api } from './api';
+import { LandingPage } from './components/LandingPage';
 import { Sidebar } from './components/Sidebar';
 import { DashboardView } from './components/DashboardView';
 import { ResumeContextView } from './components/ResumeContextView';
@@ -8,41 +8,54 @@ import { ScraperView } from './components/ScraperView';
 import { ContactsQueueView } from './components/ContactsQueueView';
 import { TemplatesView } from './components/TemplatesView';
 import { SettingsView } from './components/SettingsView';
+import { TopLoadingBar } from './components/Skeleton';
 
 export function App() {
-  const [authenticated, setAuthenticated] = useState<boolean>(!!getToken());
+  const [authenticated, setAuthenticated] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
+  const [pageLoading, setPageLoading] = useState<boolean>(false);
 
   const [contacts, setContacts] = useState<any[]>([]);
   const [queue, setQueue] = useState<any[]>([]);
   const [settings, setSettings] = useState<any>({});
+  const [metrics, setMetrics] = useState<any[]>([]);
   const [userEmail, setUserEmail] = useState<string>('');
 
-  // Handle Google OAuth Callback redirect query param ?token=...
+  // Verify cookie session on mount
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const tokenFromUrl = params.get('token');
-    if (tokenFromUrl) {
-      setToken(tokenFromUrl);
-      setAuthenticated(true);
-      window.history.replaceState({}, document.title, window.location.pathname);
-    }
+    const verifySession = async () => {
+      setPageLoading(true);
+      try {
+        const me = await api.getMe();
+        setUserEmail(me.email);
+        setAuthenticated(true);
+      } catch (err) {
+        setAuthenticated(false);
+      } finally {
+        setPageLoading(false);
+      }
+    };
+    verifySession();
   }, []);
 
   const loadAllData = async () => {
-    if (!getToken()) return;
+    setPageLoading(true);
     try {
-      const [cList, qList, stData] = await Promise.all([
+      const [cList, qList, stData, mList] = await Promise.all([
         api.listContacts(),
         api.listQueue(),
         api.getSettings(),
+        api.listContactsMetrics().catch(() => []),
       ]);
       setContacts(cList);
       setQueue(qList);
       setSettings(stData);
+      setMetrics(mList);
       setUserEmail(stData?.smtp_user || 'Active User');
     } catch (err) {
       console.error('Data loading error:', err);
+    } finally {
+      setPageLoading(false);
     }
   };
 
@@ -53,11 +66,12 @@ export function App() {
   }, [authenticated, activeTab]);
 
   if (!authenticated) {
-    return <AuthModal onSuccess={() => setAuthenticated(true)} />;
+    return <LandingPage onSuccess={() => setAuthenticated(true)} />;
   }
 
   return (
     <div className="app-container">
+      <TopLoadingBar active={pageLoading} />
       <Sidebar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -70,14 +84,17 @@ export function App() {
             contacts={contacts}
             queue={queue}
             settings={settings}
+            metrics={metrics}
+            loading={pageLoading}
             onRefresh={loadAllData}
           />
         )}
-        {activeTab === 'resume' && <ResumeContextView />}
-        {activeTab === 'scrapers' && <ScraperView />}
-        {activeTab === 'contacts' && <ContactsQueueView />}
-        {activeTab === 'templates' && <TemplatesView />}
-        {activeTab === 'settings' && <SettingsView />}
+        {activeTab === 'resume' && <ResumeContextView onLoadingChange={setPageLoading} />}
+        {activeTab === 'scrapers' && <ScraperView onLoadingChange={setPageLoading} onRefresh={loadAllData} />}
+
+        {activeTab === 'contacts' && <ContactsQueueView onLoadingChange={setPageLoading} />}
+        {activeTab === 'templates' && <TemplatesView onLoadingChange={setPageLoading} />}
+        {activeTab === 'settings' && <SettingsView onLoadingChange={setPageLoading} />}
       </main>
     </div>
   );

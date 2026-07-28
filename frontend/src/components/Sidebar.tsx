@@ -1,6 +1,6 @@
 import React from 'react';
 import { LayoutDashboard, FileText, Search, Users, FileCode, Settings, LogOut, Zap } from 'lucide-react';
-import { removeToken } from '../api';
+import { removeToken, api } from '../api';
 
 interface SidebarProps {
   activeTab: string;
@@ -19,9 +19,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userE
     { id: 'settings', label: 'Settings', icon: Settings },
   ];
 
-  const handleSignOut = () => {
-    removeToken();
-    window.location.reload();
+  const handleSignOut = async () => {
+    try {
+      await api.logout().catch(() => {});
+    } finally {
+      removeToken();
+      window.location.reload();
+    }
   };
 
   return (
