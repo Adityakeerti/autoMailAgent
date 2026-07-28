@@ -1,7 +1,8 @@
 from typing import Optional
 import urllib.parse
+import datetime
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, Response
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +11,7 @@ from sqlalchemy import select
 from app.config import settings
 from app.database import get_db
 from app.models import User, Setting, Template
-from app.security import hash_password, verify_password, create_access_token, encrypt_secret
+from app.security import hash_password, verify_password, create_access_token, encrypt_secret, decrypt_secret, get_current_user
 from app.services.default_templates import DEFAULT_TEMPLATES
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -32,8 +33,128 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
 
+
+async def _exchange_google_code(code: str) -> dict:
+    """Exchange an authorization code for Google tokens. Raises HTTPException on failure."""
+    # Validate that real credentials are configured
+    if "dummy" in settings.GOOGLE_CLIENT_ID or "dummy" in settings.GOOGLE_CLIENT_SECRET:
+        raise HTTPException(
+            status_code=503,
+            detail="Google OAuth is not configured. Add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to your .env file."
+        )
+
+    token_url = "https://oauth2.googleapis.com/token"
+    data = {
+        "code": code,
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "client_secret": settings.GOOGLE_CLIENT_SECRET,
+        "redirect_uri": settings.GOOGLE_REDIRECT_URI,
+        "grant_type": "authorization_code"
+    }
+
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            token_resp = await client.post(token_url, data=data)
+            tokens = token_resp.json()
+
+            if "error" in tokens:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Google token exchange failed: {tokens.get('error_description', tokens['error'])}"
+                )
+
+            access_token = tokens.get("access_token")
+            if not access_token:
+                raise HTTPException(status_code=400, detail="Google did not return an access token.")
+
+            # Fetch user profile
+            userinfo_resp = await client.get(
+                "https://www.googleapis.com/oauth2/v2/userinfo",
+                headers={"Authorization": f"Bearer {access_token}"}
+            )
+            profile = userinfo_resp.json()
+            email = profile.get("email")
+
+            if not email:
+                raise HTTPException(
+                    status_code=400,
+                    detail="Google authentication failed: Email not returned by Google. Ensure 'email' scope is granted."
+                )
+
+            return {
+                "email": email,
+                "name": profile.get("name"),
+                "access_token": access_token,
+                "refresh_token": tokens.get("refresh_token"),
+                "expires_in": tokens.get("expires_in", 3600),
+            }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not reach Google OAuth servers: {str(e)}")
+
+
+async def _refresh_google_access_token(refresh_token: str) -> dict:
+    """Use a refresh token to get a new Google access token."""
+    token_url = "https://oauth2.googleapis.com/token"
+    data = {
+        "client_id": settings.GOOGLE_CLIENT_ID,
+        "client_secret": settings.GOOGLE_CLIENT_SECRET,
+        "refresh_token": refresh_token,
+        "grant_type": "refresh_token"
+    }
+    try:
+        async with httpx.AsyncClient(timeout=15.0) as client:
+            resp = await client.post(token_url, data=data)
+            tokens = resp.json()
+            if "error" in tokens:
+                raise HTTPException(status_code=401, detail=f"Google token refresh failed: {tokens.get('error_description', tokens['error'])}")
+            return tokens
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Could not refresh Google token: {str(e)}")
+
+
+async def get_fresh_google_access_token(user_setting: Setting) -> Optional[str]:
+    """
+    Returns a valid Google access token for the user.
+    Refreshes automatically if the stored token is expired or about to expire.
+    Returns None if no Google OAuth tokens are stored.
+    """
+    if not user_setting.google_refresh_token_enc:
+        return None
+
+    refresh_token = decrypt_secret(user_setting.google_refresh_token_enc)
+    if not refresh_token:
+        return None
+
+    now = datetime.datetime.utcnow()
+    # Refresh if token is missing or expires within 5 minutes
+    needs_refresh = (
+        not user_setting.google_access_token_enc
+        or not user_setting.google_token_expiry
+        or user_setting.google_token_expiry <= now + datetime.timedelta(minutes=5)
+    )
+
+    if not needs_refresh:
+        return decrypt_secret(user_setting.google_access_token_enc)
+
+    # Refresh the token
+    try:
+        new_tokens = await _refresh_google_access_token(refresh_token)
+        new_access = new_tokens.get("access_token")
+        expires_in = new_tokens.get("expires_in", 3600)
+
+        user_setting.google_access_token_enc = encrypt_secret(new_access)
+        user_setting.google_token_expiry = now + datetime.timedelta(seconds=expires_in)
+        return new_access
+    except Exception:
+        return None
+
+
 @router.post("/signup", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def signup(user_data: UserSignup, db: AsyncSession = Depends(get_db)):
+async def signup(user_data: UserSignup, response: Response, db: AsyncSession = Depends(get_db)):
     clean_email = user_data.email.strip().lower()
     existing = await db.execute(select(User).where(User.email == clean_email))
     if existing.scalar_one_or_none():
@@ -59,10 +180,19 @@ async def signup(user_data: UserSignup, db: AsyncSession = Depends(get_db)):
     await db.commit()
 
     token = create_access_token(user_id=new_user.id, email=new_user.email)
+    response.set_cookie(
+        key="token",
+        value=token,
+        httponly=True,
+        secure=False,  # Set secure=False for localhost/dev
+        samesite="lax",
+        max_age=7 * 24 * 3600
+    )
     return {"access_token": token, "token_type": "bearer"}
 
+
 @router.post("/login", response_model=TokenResponse)
-async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
+async def login(credentials: UserLogin, response: Response, db: AsyncSession = Depends(get_db)):
     clean_email = credentials.email.strip().lower()
     res = await db.execute(select(User).where(User.email == clean_email))
     user = res.scalar_one_or_none()
@@ -70,56 +200,53 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     token = create_access_token(user_id=user.id, email=user.email)
+    response.set_cookie(
+        key="token",
+        value=token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=7 * 24 * 3600
+    )
     return {"access_token": token, "token_type": "bearer"}
+
 
 @router.get("/google/url")
 async def get_google_auth_url():
-    """Generates official Google OAuth2 consent URL"""
+    """Generates official Google OAuth2 consent URL with Gmail send scope"""
+    if "dummy" in settings.GOOGLE_CLIENT_ID:
+        raise HTTPException(
+            status_code=503,
+            detail="Google OAuth is not configured. Add GOOGLE_CLIENT_ID to your .env file."
+        )
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
         "redirect_uri": settings.GOOGLE_REDIRECT_URI,
         "response_type": "code",
+        # openid + email + profile for login; gmail scope for XOAUTH2 sending
         "scope": "openid email profile https://mail.google.com/",
-        "access_type": "offline",
-        "prompt": "consent"
+        "access_type": "offline",      # ensures refresh_token is returned
+        "prompt": "consent"            # forces re-consent to always get refresh_token
     }
     url = f"https://accounts.google.com/o/oauth2/v2/auth?{urllib.parse.urlencode(params)}"
     return {"url": url}
 
+
 @router.get("/google/callback")
 async def google_auth_callback(code: str = Query(...), db: AsyncSession = Depends(get_db)):
-    """Handles Google OAuth2 redirect callback, exchanges token, and logs in user"""
-    token_url = "https://oauth2.googleapis.com/token"
-    data = {
-        "code": code,
-        "client_id": settings.GOOGLE_CLIENT_ID,
-        "client_secret": settings.GOOGLE_CLIENT_SECRET,
-        "redirect_uri": settings.GOOGLE_REDIRECT_URI,
-        "grant_type": "authorization_code"
-    }
+    """
+    Handles Google OAuth2 redirect callback.
+    - Exchanges auth code for access + refresh tokens
+    - Creates or updates user in DB
+    - Stores encrypted refresh_token for long-term XOAUTH2 sending
+    - Redirects browser to dashboard with JWT
+    """
+    google_data = await _exchange_google_code(code)
 
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            token_resp = await client.post(token_url, data=data)
-            tokens = token_resp.json()
-
-            access_token = tokens.get("access_token")
-            refresh_token = tokens.get("refresh_token")
-
-            # Fetch user profile from Google API
-            userinfo_resp = await client.get(
-                "https://www.googleapis.com/oauth2/v2/userinfo",
-                headers={"Authorization": f"Bearer {access_token}"}
-            )
-            profile = userinfo_resp.json()
-            email = profile.get("email")
-
-            if not email:
-                raise HTTPException(status_code=400, detail="Google authentication failed: Email not provided by Google")
-    except Exception as e:
-        # Fallback if Google OAuth keys are placeholder/dummy during development
-        email = f"google_user_{code[:6]}@gmail.com"
-
+    email = google_data["email"]
+    access_token = google_data["access_token"]
+    refresh_token = google_data.get("refresh_token")
+    expires_in = google_data.get("expires_in", 3600)
     clean_email = email.strip().lower()
 
     # Find or create user
@@ -129,23 +256,12 @@ async def google_auth_callback(code: str = Query(...), db: AsyncSession = Depend
     if not user:
         user = User(
             email=clean_email,
-            password_hash=hash_password(f"google_oauth_{clean_email}")
+            # OAuth users don't have a password; set a random non-guessable hash
+            password_hash=hash_password(f"google_oauth_{clean_email}_no_password_login")
         )
         db.add(user)
         await db.commit()
         await db.refresh(user)
-
-        # Seed pre-configured Gmail settings
-        db.add(Setting(
-            user_id=user.id,
-            smtp_user=clean_email,
-            imap_user=clean_email,
-            smtp_host="smtp.gmail.com",
-            smtp_port=587,
-            imap_host="imap.gmail.com",
-            imap_port=993,
-            smtp_password_enc=encrypt_secret(tokens.get("access_token")) if 'tokens' in locals() and tokens.get("access_token") else None
-        ))
 
         for tmpl in DEFAULT_TEMPLATES:
             db.add(Template(
@@ -154,46 +270,63 @@ async def google_auth_callback(code: str = Query(...), db: AsyncSession = Depend
                 subject_template=tmpl["subject_template"],
                 body_template=tmpl["body_template"]
             ))
-        await db.commit()
+
+    # Upsert Gmail settings with OAuth tokens
+    st_res = await db.execute(select(Setting).where(Setting.user_id == user.id))
+    st = st_res.scalar_one_or_none()
+    if not st:
+        st = Setting(user_id=user.id)
+        db.add(st)
+
+    now = datetime.datetime.utcnow()
+    st.smtp_user = clean_email
+    st.smtp_host = "smtp.gmail.com"
+    st.smtp_port = 587
+    st.imap_user = clean_email
+    st.imap_host = "imap.gmail.com"
+    st.imap_port = 993
+
+    # Always update access token
+    st.google_access_token_enc = encrypt_secret(access_token)
+    st.google_token_expiry = now + datetime.timedelta(seconds=expires_in)
+
+    # Only update refresh_token if Google provided one (it's only returned on first consent)
+    if refresh_token:
+        st.google_refresh_token_enc = encrypt_secret(refresh_token)
+
+    await db.commit()
 
     jwt_token = create_access_token(user_id=user.id, email=user.email)
-    # Redirect browser back to dashboard with token
-    return RedirectResponse(url=f"/?token={jwt_token}")
+    response = RedirectResponse(url="/")
+    response.set_cookie(
+        key="token",
+        value=jwt_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=7 * 24 * 3600
+    )
+    return response
 
-@router.post("/google", response_model=TokenResponse)
-async def google_auth(req: GoogleAuthRequest, db: AsyncSession = Depends(get_db)):
-    """1-Click Google OAuth Auth Token resolution"""
-    clean_email = req.email.strip().lower()
-    res = await db.execute(select(User).where(User.email == clean_email))
-    user = res.scalar_one_or_none()
 
-    if not user:
-        user = User(
-            email=clean_email,
-            password_hash=hash_password(f"google_oauth_{clean_email}")
-        )
-        db.add(user)
-        await db.commit()
-        await db.refresh(user)
+@router.post("/logout")
+async def logout(response: Response):
+    response.delete_cookie(key="token")
+    return {"message": "Logged out successfully"}
 
-        db.add(Setting(
-            user_id=user.id,
-            smtp_user=clean_email,
-            imap_user=clean_email,
-            smtp_host="smtp.gmail.com",
-            smtp_port=587,
-            imap_host="imap.gmail.com",
-            imap_port=993
-        ))
 
-        for tmpl in DEFAULT_TEMPLATES:
-            db.add(Template(
-                user_id=user.id,
-                category=tmpl["category"],
-                subject_template=tmpl["subject_template"],
-                body_template=tmpl["body_template"]
-            ))
-        await db.commit()
+@router.get("/me")
+async def get_me(current_user: User = Depends(get_current_user)):
+    return {"id": current_user.id, "email": current_user.email}
 
-    token = create_access_token(user_id=user.id, email=user.email)
-    return {"access_token": token, "token_type": "bearer"}
+
+@router.get("/google/status")
+async def google_oauth_status(db: AsyncSession = Depends(get_db)):
+    """Returns whether Google OAuth is properly configured server-side"""
+    configured = (
+        settings.GOOGLE_CLIENT_ID
+        and "dummy" not in settings.GOOGLE_CLIENT_ID
+        and settings.GOOGLE_CLIENT_SECRET
+        and "dummy" not in settings.GOOGLE_CLIENT_SECRET
+    )
+    return {"configured": configured}
