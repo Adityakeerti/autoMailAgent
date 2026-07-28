@@ -18,7 +18,9 @@ def is_within_schedule_window(window_str: str) -> bool:
         sh, sm = map(int, start_str.split(":"))
         eh, em = map(int, end_str.split(":"))
 
-        now = datetime.datetime.now().time()
+        # Evaluate time in India Standard Time (IST: UTC+5:30)
+        ist_tz = datetime.timezone(datetime.timedelta(hours=5, minutes=30))
+        now = datetime.datetime.now(ist_tz).time()
         start_time = datetime.time(sh, sm)
         end_time = datetime.time(eh, em)
 
@@ -59,7 +61,7 @@ async def process_user_queue(user_id: int):
         res_c = await db.execute(
             select(Contact).where(
                 Contact.user_id == user_id,
-                Contact.status.in_(["queued", "personalized"])
+                Contact.status.in_(["queued", "personalized", "generic_queued"])
             ).order_by(Contact.id.asc()).limit(1)
         )
         contact = res_c.scalar_one_or_none()
@@ -81,9 +83,26 @@ async def global_scheduler_tick():
         except Exception as e:
             logger.error(f"Error processing queue for user {uid}: {e}")
 
+async def global_batch_scraping():
+    logger.info("Starting scheduled global batch scraping...")
+    from app.services.scrapers import run_batch_scraping
+    async with AsyncSessionLocal() as db:
+        res_users = await db.execute(select(User.id))
+        user_ids = res_users.scalars().all()
+        
+    for uid in user_ids:
+        try:
+            async with AsyncSessionLocal() as db:
+                count = await run_batch_scraping(uid, db)
+                if count > 0:
+                    logger.info(f"Scheduled batch scraping for user {uid} added {count} contacts.")
+        except Exception as e:
+            logger.error(f"Error in scheduled batch scraping for user {uid}: {e}")
+
 def start_scheduler():
     if not scheduler.running:
         scheduler.add_job(global_scheduler_tick, 'interval', minutes=1, id='automail_queue_job')
+        scheduler.add_job(global_batch_scraping, 'interval', hours=6, id='automail_batch_scrape')
         scheduler.start()
 
 def stop_scheduler():
