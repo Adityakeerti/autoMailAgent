@@ -54,6 +54,13 @@ assets_dir = os.path.join(frontend_dist, "assets")
 if os.path.exists(assets_dir):
     app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
+@app.get("/", include_in_schema=False)
+async def serve_root():
+    index_file = os.path.join(frontend_dist, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return {"status": "ok", "service": "AutoMail API", "docs": "/docs"}
+
 # Always register the catch-all GET route.
 # On Render (API-only), this returns a JSON status.
 # On local mono-repo with built dist, it serves the SPA index.
