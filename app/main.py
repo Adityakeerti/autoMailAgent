@@ -5,8 +5,9 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from contextlib import asynccontextmanager
 
+from app.config import settings
 from app.database import init_db
-from app.routers import health, auth, settings, resume, context, templates, contacts, scrapers, queue
+from app.routers import health, auth, settings as routers_settings, resume, context, templates, contacts, scrapers, queue
 from app.workers.scheduler import start_scheduler, stop_scheduler
 
 @asynccontextmanager
@@ -29,7 +30,7 @@ app = FastAPI(
 # Enable CORS for Vercel Frontend and Local Development (Handles pre-flight OPTIONS requests)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -38,7 +39,7 @@ app.add_middleware(
 # API Routers
 app.include_router(health.router)
 app.include_router(auth.router)
-app.include_router(settings.router)
+app.include_router(routers_settings.router)
 app.include_router(resume.router)
 app.include_router(context.router)
 app.include_router(templates.router)

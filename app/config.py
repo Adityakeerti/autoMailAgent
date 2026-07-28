@@ -17,11 +17,18 @@ class Settings(BaseSettings):
     # Shared System LinkedIn Scraping Cookie (Pool for all users)
     SHARED_LINKEDIN_COOKIE: str = ""
 
-    # LLM Keys
+    # LLM Keys & Endpoints
     GROQ_API_KEY: str = ""
+    LLAMA_API_KEY: str = ""
     OLLAMA_API_KEY: str = ""
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
     GEMINI_API_KEY: str = ""
     GITHUB_TOKEN: str = ""
+
+    # Email Enrichment Keys
+    APOLLO_API_KEY: str = ""
+
+    ALLOWED_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000"
 
     class Config:
         env_file = ".env"
