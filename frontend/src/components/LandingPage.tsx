@@ -30,6 +30,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [activePipelineTab, setActivePipelineTab] = useState<number>(0);
+  const [showGoogleWarning, setShowGoogleWarning] = useState(false);
+  const [googleUrl, setGoogleUrl] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +58,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
     setError('');
     try {
       const res = await api.getGoogleAuthUrl();
-      window.location.href = res.url;
+      setGoogleUrl(res.url);
+      setShowGoogleWarning(true);
     } catch (err: any) {
       setError('Failed to launch Google OAuth: ' + err.message);
     }
@@ -538,6 +541,33 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
           </div>
         </div>
       </footer>
+      {showGoogleWarning && (
+        <div className="modal-overlay" style={{ zIndex: 1100 }}>
+          <div className="modal-content" style={{ maxWidth: '400px', padding: '24px', textAlign: 'center' }}>
+            <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
+            <h3 style={{ marginBottom: '12px', fontSize: '18px', fontWeight: 600 }}>Google Login Verification Pending</h3>
+            <p style={{ fontSize: '13px', color: 'var(--on-surface-variant)', lineHeight: '1.6', marginBottom: '20px' }}>
+              AutoMail's Google OAuth App is currently undergoing verification. Access is restricted to pre-approved/whitelisted email accounts (up to 100 users). 
+              <br/><br/>
+              If the administrator has not manually whitelisted your email address, your login attempt will fail.
+            </p>
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowGoogleWarning(false)}>
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  if (googleUrl) window.location.href = googleUrl;
+                }}
+              >
+                Proceed to Google
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
