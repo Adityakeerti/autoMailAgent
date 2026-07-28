@@ -238,3 +238,4 @@ Follow in order. Do not skip ahead — each step depends on the one before it. D
 - **Fix 3 — Frontend token pickup from URL:** `App.tsx` now reads `?token=` on mount, stores it in localStorage via `setToken()`, and cleans the URL before calling `/auth/me` — so the Bearer header is always present on the session check.
 - **Added `FRONTEND_URL` config setting** in `app/config.py` — set to `https://getnewjob-ai.vercel.app` on Render.
 - **Required Render env vars to set:** `FRONTEND_URL=https://getnewjob-ai.vercel.app`, `VITE_API_BASE_URL` on Vercel = `https://getyourjob-e9dn.onrender.com`, `GOOGLE_REDIRECT_URI=https://getyourjob-e9dn.onrender.com/auth/google/callback`.
+- **Force Google Account Chooser:** Changed the Google OAuth `prompt` parameter from `"consent"` to `"select_account consent"` to ensure users can choose which Google account to login with. (DONE)

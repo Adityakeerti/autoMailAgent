@@ -226,7 +226,7 @@ async def get_google_auth_url():
         # openid + email + profile for login; gmail scope for XOAUTH2 sending
         "scope": "openid email profile https://mail.google.com/",
         "access_type": "offline",      # ensures refresh_token is returned
-        "prompt": "consent"            # forces re-consent to always get refresh_token
+        "prompt": "select_account consent"  # forces account selector and re-consent to get refresh_token
     }
     url = f"https://accounts.google.com/o/oauth2/v2/auth?{urllib.parse.urlencode(params)}"
     return {"url": url}
