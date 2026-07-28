@@ -1,9 +1,10 @@
 import logging
+from typing import Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
 from app.models import Contact, Template, ContextProfile, Setting
-from app.services.personalizer import generate_personalized_placeholders
+from app.services.personalizer import generate_personalized_placeholders, _company_confidence
 
 logger = logging.getLogger("renderer")
 
@@ -16,12 +17,19 @@ async def render_contact_email(contact_id: int, template_id: Optional[int], db: 
     user_id = contact.user_id
 
     # Get template
+    template = None
     if template_id:
         res_t = await db.execute(select(Template).where(Template.id == template_id, Template.user_id == user_id))
         template = res_t.scalar_one_or_none()
     else:
-        res_t = await db.execute(select(Template).where(Template.user_id == user_id).limit(1))
-        template = res_t.scalar_one_or_none()
+        # If the contact is generic, fetch the Generic Company Outreach template first
+        if contact.status in ["generic_new", "generic_queued"]:
+            res_t = await db.execute(select(Template).where(Template.user_id == user_id, Template.category == "Generic Company Outreach"))
+            template = res_t.scalar_one_or_none()
+        
+        if not template:
+            res_t = await db.execute(select(Template).where(Template.user_id == user_id).limit(1))
+            template = res_t.scalar_one_or_none()
 
     if not template:
         raise ValueError("No template available for user")
@@ -34,13 +42,18 @@ async def render_contact_email(contact_id: int, template_id: Optional[int], db: 
     portfolio_url = (prof.portfolio_url if prof and prof.portfolio_url else "https://portfolio.dev")
     github_url = (prof.github_url if prof and prof.github_url else "https://github.com")
 
-    # Generate dynamic placeholders
-    dynamic_placeholders = await generate_personalized_placeholders(contact, template, db)
+    # Generate dynamic placeholders or bypass for generic template/contacts
+    is_generic = contact.status in ["generic_new", "generic_queued"] or template.category == "Generic Company Outreach"
+    if is_generic:
+        dynamic_placeholders = {}
+    else:
+        dynamic_placeholders = await generate_personalized_placeholders(contact, template, db)
 
     # Static map
+    company_display = contact.company if _company_confidence(contact.company) == "high" else "your company"
     placeholder_map = {
         "RECIPIENT_NAME": contact.name or "Hiring Manager",
-        "COMPANY": contact.company or "your company",
+        "COMPANY": company_display,
         "ROLE_TITLE": contact.role or "Software Engineer",
         "USER_NAME": user_name,
         "PORTFOLIO_URL": portfolio_url,
@@ -60,13 +73,17 @@ async def render_contact_email(contact_id: int, template_id: Optional[int], db: 
     contact.subject = subject
     contact.body = body
     contact.personalized_data = dynamic_placeholders
-    contact.status = "personalized"
+    
+    if is_generic:
+        contact.status = "generic_queued" if contact.status == "generic_new" else contact.status
+    else:
+        contact.status = "personalized"
 
     # Check user send mode
     res_st = await db.execute(select(Setting).where(Setting.user_id == user_id))
     st = res_st.scalar_one_or_none()
     if st and st.send_mode == "auto":
-        contact.status = "queued"
+        contact.status = "generic_queued" if is_generic else "queued"
 
     await db.commit()
     await db.refresh(contact)
