@@ -1,6 +1,6 @@
 import datetime
 from typing import Optional, List
-from sqlalchemy import String, Integer, DateTime, Text, ForeignKey, JSON
+from sqlalchemy import String, Integer, DateTime, Text, ForeignKey, JSON, Float
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -19,6 +19,7 @@ class User(Base):
     context_experiences: Mapped[List["ContextExperience"]] = relationship("ContextExperience", back_populates="user", cascade="all, delete-orphan")
     context_projects: Mapped[List["ContextProject"]] = relationship("ContextProject", back_populates="user", cascade="all, delete-orphan")
     context_achievements: Mapped[List["ContextAchievement"]] = relationship("ContextAchievement", back_populates="user", cascade="all, delete-orphan")
+    job_preferences: Mapped[Optional["JobPreference"]] = relationship("JobPreference", back_populates="user", cascade="all, delete-orphan", uselist=False)
     templates: Mapped[List["Template"]] = relationship("Template", back_populates="user", cascade="all, delete-orphan")
     contacts: Mapped[List["Contact"]] = relationship("Contact", back_populates="user", cascade="all, delete-orphan")
     scrape_queues: Mapped[List["ScrapeQueue"]] = relationship("ScrapeQueue", back_populates="user", cascade="all, delete-orphan")
@@ -39,6 +40,11 @@ class Setting(Base):
     imap_port: Mapped[Optional[int]] = mapped_column(Integer, default=993, nullable=True)
     imap_user: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     imap_password_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # Google OAuth2 tokens for XOAUTH2 SMTP sending
+    google_refresh_token_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    google_access_token_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    google_token_expiry: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime, nullable=True)
 
     linkedin_cookie_enc: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
@@ -111,12 +117,30 @@ class ContextAchievement(Base):
 
     user: Mapped["User"] = relationship("User", back_populates="context_achievements")
 
+class JobPreference(Base):
+    __tablename__ = "job_preferences"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), unique=True, nullable=False)
+
+    role_1: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    role_2: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    role_3: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+
+    min_lpa: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    max_lpa: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+
+    locations: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    experience_level: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+
+    user: Mapped["User"] = relationship("User", back_populates="job_preferences")
+
 class Template(Base):
     __tablename__ = "templates"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    category: Mapped[str] = mapped_column(String(100), nullable=False) # e.g. Recruiter, Referral, Tech Lead, Follow-up, Cold Apply
+    category: Mapped[str] = mapped_column(String(100), nullable=False)
     subject_template: Mapped[str] = mapped_column(Text, nullable=False)
     body_template: Mapped[str] = mapped_column(Text, nullable=False)
 
@@ -135,7 +159,7 @@ class Contact(Base):
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     linkedin_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     discovered_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.utcnow)
-    status: Mapped[str] = mapped_column(String(50), default="new") # new -> personalized -> queued -> sent -> replied / bounced
+    status: Mapped[str] = mapped_column(String(50), default="new")
 
     subject: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
     body: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
@@ -151,7 +175,7 @@ class ScrapeQueue(Base):
     source: Mapped[str] = mapped_column(String(100), nullable=False)
     raw_data: Mapped[dict] = mapped_column(JSON, nullable=False)
     discovered_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.utcnow)
-    status: Mapped[str] = mapped_column(String(50), default="pending") # pending, processed, ignored
+    status: Mapped[str] = mapped_column(String(50), default="pending")
 
     user: Mapped["User"] = relationship("User", back_populates="scrape_queues")
 
@@ -163,7 +187,7 @@ class SendLog(Base):
     contact_id: Mapped[int] = mapped_column(ForeignKey("contacts.id", ondelete="CASCADE"), nullable=False)
     template_id: Mapped[Optional[int]] = mapped_column(ForeignKey("templates.id", ondelete="SET NULL"), nullable=True)
     sent_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.utcnow)
-    status: Mapped[str] = mapped_column(String(50), default="sent") # sent, failed
+    status: Mapped[str] = mapped_column(String(50), default="sent")
     message_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="send_logs")

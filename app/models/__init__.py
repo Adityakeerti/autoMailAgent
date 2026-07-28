@@ -6,6 +6,7 @@ from app.models.all_models import (
     ContextExperience,
     ContextProject,
     ContextAchievement,
+    JobPreference,
     Template,
     Contact,
     ScrapeQueue,
