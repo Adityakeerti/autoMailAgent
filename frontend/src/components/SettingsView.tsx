@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Mail, Clock, Key, Globe, CheckCircle, Loader2 } from 'lucide-react';
+import { Save, Mail, Clock, Key, CheckCircle, Loader2 } from 'lucide-react';
 import { api } from '../api';
 import { SkeletonCard } from './Skeleton';
 
@@ -53,14 +53,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onLoadingChange }) =
     }
   };
 
-  const handleConnectGoogleOAuth = async () => {
-    try {
-      const res = await api.getGoogleAuthUrl();
-      window.location.href = res.url;
-    } catch (err: any) {
-      setMsg('Failed to launch Google OAuth: ' + err.message);
-    }
-  };
+
 
   return (
     <div>

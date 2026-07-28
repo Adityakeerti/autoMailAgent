@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { api, setToken } from '../api';
 import {
   Mail,
@@ -11,12 +11,7 @@ import {
   Cpu,
   CheckCircle2,
   ArrowRight,
-  Terminal,
-  FileText,
-  Database,
-  Send,
-  Activity,
-  Sparkles
+  Database
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -29,6 +24,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showGoogleWarning, setShowGoogleWarning] = useState(false);
+  const [requestEmail, setRequestEmail] = useState('');
+  const [googleUrl, setGoogleUrl] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -57,6 +55,14 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
       authElem.scrollIntoView({ behavior: 'smooth' });
     }
   };
+
+  useEffect(() => {
+    // Pre-fetch the Google OAuth URL so the warning modal can redirect immediately
+    fetch(`${import.meta.env.VITE_API_URL || ''}/auth/google/url`)
+      .then((r) => r.json())
+      .then((data) => { if (data.url) setGoogleUrl(data.url); })
+      .catch(() => {});
+  }, []);
 
   return (
     <div className="landing-wrapper">
@@ -222,6 +228,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
             <Shield size={14} color="var(--outline)" />
             <span>Encrypted with AES-256 at rest. Private tenant isolation.</span>
           </div>
+
+          <div style={{ margin: '16px 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ flex: 1, height: '1px', background: 'var(--outline-variant)' }} />
+            <span style={{ fontSize: '12px', color: 'var(--on-surface-variant)' }}>or</span>
+            <div style={{ flex: 1, height: '1px', background: 'var(--outline-variant)' }} />
+          </div>
+
+          <button
+            type="button"
+            className="btn btn-secondary auth-submit-btn"
+            style={{ marginTop: '12px', gap: '8px' }}
+            onClick={() => setShowGoogleWarning(true)}
+          >
+            <Globe size={16} color="#4285F4" />
+            Continue with Google
+          </button>
         </div>
       </section>
 
@@ -229,9 +251,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
       <section id="features" className="landing-features-section">
         <div className="section-header">
           <span className="chip chip-new mono">CORE CAPABILITIES</span>
-          <h2>Designed for High-Volume, Zero-Slop Outreach</h2>
+          <h2>Designed for Reliable, Zero-Slop Outreach</h2>
           <p className="section-subtitle">
-            Every component is built around maximum reliability, strict anti-spam pacing, and deep context matching.
+            Every component is built around maximum reliability, strict pacing, and deep context matching.
           </p>
         </div>
 
@@ -242,7 +264,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
             </div>
             <h3>Context Matching Engine</h3>
             <p>
-              LLM automatically parses your resume into skills, experiences, and projects, matching them against lead job requirements with high tag overlap.
+              LLM automatically aligns your profile highlights, experiences, and projects with target roles for high-relevance outreach.
             </p>
           </div>
 
@@ -250,19 +272,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
             <div className="feature-icon">
               <Globe size={24} color="var(--primary)" />
             </div>
-            <h3>Multi-Source Lead Scraping</h3>
+            <h3>Lead Discovery Hub</h3>
             <p>
-              Safely extract verified leads from Career Pages, GitHub repositories, AngelList, and LinkedIn with rate-limited, human-paced workers.
-            </p>
-          </div>
-
-          <div className="feature-card card">
-            <div className="feature-icon">
-              <Globe size={24} color="#4285F4" />
-            </div>
-            <h3>Google XOAUTH2 Integration</h3>
-            <p>
-              Send emails using official Google OAuth2 tokens with automatic refresh token rotation. No raw SMTP passwords stored or logged.
+              Organize target contacts and look up verified email details based on company domain and recipient parameters.
             </p>
           </div>
 
@@ -272,7 +284,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
             </div>
             <h3>Autonomous Send Queue & Pacing</h3>
             <p>
-              Protect domain reputation with strict rate-limiting (2-3 sends/hour) and custom schedule windows (e.g., 08:00–23:00).
+              Protect domain reputation with strict sending rate-limiting (2-3 sends/hour) and custom daily schedule windows.
             </p>
           </div>
 
@@ -282,7 +294,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
             </div>
             <h3>IMAP Reply & Bounce Tracker</h3>
             <p>
-              Background workers poll your inbox via IMAP to catch prospect replies or soft bounces, auto-pausing campaigns instantly.
+              Keep track of replies or delivery reports via standard IMAP integrations, letting you auto-pause queues instantly.
             </p>
           </div>
 
@@ -290,31 +302,30 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
             <div className="feature-icon">
               <Shield size={24} color="var(--primary)" />
             </div>
-            <h3>Multi-Tenant Sandbox</h3>
+            <h3>Private Data Sandbox</h3>
             <p>
-              Complete data isolation per user. Secret keys, resumes, scraped contacts, and send logs remain strictly private and encrypted.
+              Complete data isolation per user. SMTP details, resume credentials, contacts, and logs remain strictly private and encrypted.
             </p>
           </div>
         </div>
       </section>
 
-      {/* Security & Architecture */}
+      {/* Security */}
       <section id="security" className="landing-security-section">
         <div className="security-card card">
           <div className="security-content">
             <div className="security-badge mono">
               <Shield size={16} />
-              <span>ENTERPRISE SECURITY</span>
+              <span>DATA PRIVACY</span>
             </div>
-            <h2>Built with Zero-Trust Isolation & AES-256 Encryption</h2>
+            <h2>Built with Isolation & AES-256 Encryption</h2>
             <p>
-              All external credentials—including SMTP passwords, IMAP tokens, and LinkedIn session cookies—are encrypted using Fernet (AES-256) before reaching disk.
+              All external credentials—including SMTP passwords, IMAP tokens, and settings—are encrypted using Fernet (AES-256) before reaching disk.
             </p>
             <ul className="security-list">
               <li><CheckCircle2 size={16} color="var(--primary)" /> <span>JWT authentication required on every API endpoint</span></li>
               <li><CheckCircle2 size={16} color="var(--primary)" /> <span>Row-level user isolation preventing cross-account leaks</span></li>
-              <li><CheckCircle2 size={16} color="var(--primary)" /> <span>Anti-spam hook duplication guard for consecutive sends</span></li>
-              <li><CheckCircle2 size={16} color="var(--primary)" /> <span>XOAUTH2 token automatic expiry refresh cycles</span></li>
+              <li><CheckCircle2 size={16} color="var(--primary)" /> <span>Pacing limits and outreach safety checks</span></li>
             </ul>
           </div>
         </div>
@@ -331,7 +342,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
               <span className="brand-name">AutoMail</span>
             </div>
             <p className="footer-copy">
-              Precision Cold Email Automation Engine • Premium Utility Architecture
+              Precision Cold Email Outreach Engine
             </p>
           </div>
           <div className="footer-status mono">
@@ -340,6 +351,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
           </div>
         </div>
       </footer>
+
+      {/* Google Verification Warning Modal */}
       {showGoogleWarning && (
         <div className="modal-overlay" style={{ zIndex: 1100 }}>
           <div className="modal-content" style={{ maxWidth: '450px', padding: '24px', textAlign: 'center' }}>
@@ -366,30 +379,26 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn btn-secondary btn-sm"
-                  style={{ 
-                    justifyContent: 'center', 
-                    fontSize: '11px', 
-                    pointerEvents: requestEmail ? 'auto' : 'none', 
-                    opacity: requestEmail ? 1 : 0.6 
+                  style={{
+                    justifyContent: 'center',
+                    fontSize: '11px',
+                    pointerEvents: requestEmail ? 'auto' : 'none',
+                    opacity: requestEmail ? 1 : 0.6
                   }}
-                  onClick={(e) => {
-                    if (!requestEmail) e.preventDefault();
-                  }}
+                  onClick={(e) => { if (!requestEmail) e.preventDefault(); }}
                 >
                   💬 Request via WhatsApp
                 </a>
                 <a
                   href={requestEmail ? `mailto:adityacodes404@gmail.com?subject=AutoMail%20Whitelist%20Request&body=Please%20whitelist%20my%20email%3A%20${encodeURIComponent(requestEmail)}` : '#'}
                   className="btn btn-secondary btn-sm"
-                  style={{ 
-                    justifyContent: 'center', 
-                    fontSize: '11px', 
-                    pointerEvents: requestEmail ? 'auto' : 'none', 
-                    opacity: requestEmail ? 1 : 0.6 
+                  style={{
+                    justifyContent: 'center',
+                    fontSize: '11px',
+                    pointerEvents: requestEmail ? 'auto' : 'none',
+                    opacity: requestEmail ? 1 : 0.6
                   }}
-                  onClick={(e) => {
-                    if (!requestEmail) e.preventDefault();
-                  }}
+                  onClick={(e) => { if (!requestEmail) e.preventDefault(); }}
                 >
                   ✉️ Request via Email
                 </a>
@@ -403,9 +412,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
               <button
                 type="button"
                 className="btn btn-primary btn-sm"
-                onClick={() => {
-                  if (googleUrl) window.location.href = googleUrl;
-                }}
+                onClick={() => { if (googleUrl) window.location.href = googleUrl; }}
               >
                 Proceed to Google
               </button>
