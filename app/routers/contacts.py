@@ -2,7 +2,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, EmailStr
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
+from sqlalchemy import select, func, case
 
 from app.database import get_db
 from app.models import User, Contact
@@ -18,6 +18,14 @@ class ContactCreate(BaseModel):
     job_posting_url: Optional[str] = None
     email: EmailStr
     linkedin_url: Optional[str] = None
+
+class ChannelMetrics(BaseModel):
+    source: str
+    leads_found: int
+    real_name_count: int
+    generic_count: int
+    valid_count: int
+    bounced_count: int
 
 class StatusUpdate(BaseModel):
     status: str
@@ -55,10 +63,60 @@ async def list_contacts(current_user: User = Depends(get_current_user), db: Asyn
             status=c.status,
             subject=c.subject,
             body=c.body,
-            discovered_at=c.discovered_at.isoformat()
+            discovered_at=c.discovered_at.isoformat() + "Z"
         )
         for c in items
     ]
+
+@router.get("/metrics", response_model=List[ChannelMetrics])
+async def get_contacts_metrics(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    stmt = (
+        select(
+            Contact.source,
+            func.count(Contact.id).label("leads_found"),
+            func.sum(
+                case(
+                    (Contact.name != "Hiring Manager", 1),
+                    else_=0
+                )
+            ).label("real_name_count"),
+            func.sum(
+                case(
+                    (Contact.name == "Hiring Manager", 1),
+                    else_=0
+                )
+            ).label("generic_count"),
+            func.sum(
+                case(
+                    (Contact.status != "bounced", 1),
+                    else_=0
+                )
+            ).label("valid_count"),
+            func.sum(
+                case(
+                    (Contact.status == "bounced", 1),
+                    else_=0
+                )
+            ).label("bounced_count")
+        )
+        .where(Contact.user_id == current_user.id)
+        .group_by(Contact.source)
+    )
+    res = await db.execute(stmt)
+    rows = res.all()
+    
+    metrics = []
+    for row in rows:
+        source = row.source or "unknown"
+        metrics.append(ChannelMetrics(
+            source=source,
+            leads_found=row.leads_found or 0,
+            real_name_count=int(row.real_name_count or 0),
+            generic_count=int(row.generic_count or 0),
+            valid_count=int(row.valid_count or 0),
+            bounced_count=int(row.bounced_count or 0)
+        ))
+    return metrics
 
 @router.post("", response_model=ContactResponse, status_code=status.HTTP_201_CREATED)
 async def create_contact(data: ContactCreate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -89,12 +147,12 @@ async def create_contact(data: ContactCreate, current_user: User = Depends(get_c
         status=c.status,
         subject=c.subject,
         body=c.body,
-        discovered_at=c.discovered_at.isoformat()
+        discovered_at=c.discovered_at.isoformat() + "Z"
     )
 
 @router.put("/{contact_id}/status", response_model=ContactResponse)
 async def update_contact_status(contact_id: int, data: StatusUpdate, current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
-    valid_statuses = ["new", "personalized", "queued", "sent", "replied", "bounced"]
+    valid_statuses = ["new", "personalized", "queued", "sent", "replied", "bounced", "generic_new", "generic_queued"]
     if data.status not in valid_statuses:
         raise HTTPException(status_code=400, detail=f"Invalid status. Must be one of {valid_statuses}")
 
@@ -119,7 +177,7 @@ async def update_contact_status(contact_id: int, data: StatusUpdate, current_use
         status=c.status,
         subject=c.subject,
         body=c.body,
-        discovered_at=c.discovered_at.isoformat()
+        discovered_at=c.discovered_at.isoformat() + "Z"
     )
 
 @router.delete("/{contact_id}", status_code=status.HTTP_204_NO_CONTENT)
