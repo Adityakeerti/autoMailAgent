@@ -1,6 +1,8 @@
+import os
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test_automail.db"
+
 import asyncio
 import io
-import os
 import json
 import logging
 from httpx import AsyncClient, ASGITransport
@@ -170,7 +172,7 @@ async def test_step7_templates(client: AsyncClient, token_a: str, token_b: str):
     res_a = await client.get("/templates", headers=headers_a)
     assert res_a.status_code == 200
     templates_a = res_a.json()
-    assert len(templates_a) == 5, f"Expected 5 seeded templates, got {len(templates_a)}"
+    assert len(templates_a) == 6, f"Expected 6 seeded templates, got {len(templates_a)}"
 
     # User A edits template #1
     t1_id = templates_a[0]["id"]
