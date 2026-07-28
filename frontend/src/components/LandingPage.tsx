@@ -29,10 +29,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [activePipelineTab, setActivePipelineTab] = useState<number>(0);
-  const [showGoogleWarning, setShowGoogleWarning] = useState(false);
-  const [googleUrl, setGoogleUrl] = useState('');
-  const [requestEmail, setRequestEmail] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,88 +51,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
     }
   };
 
-  const handleGoogleOAuthConnect = async () => {
-    setError('');
-    try {
-      const res = await api.getGoogleAuthUrl();
-      setGoogleUrl(res.url);
-      setShowGoogleWarning(true);
-    } catch (err: any) {
-      setError('Failed to launch Google OAuth: ' + err.message);
-    }
-  };
-
   const scrollToAuth = () => {
     const authElem = document.getElementById('auth-section');
     if (authElem) {
       authElem.scrollIntoView({ behavior: 'smooth' });
     }
   };
-
-  const pipelineSteps = [
-    {
-      id: 0,
-      title: 'Resume Context Parser',
-      icon: <FileText size={16} />,
-      badge: 'PARSED OK',
-      content: {
-        candidate: 'Alex Rivera',
-        skills: ['FastAPI', 'React', 'PostgreSQL', 'Python', 'Docker'],
-        experience: 'Senior Backend Engineer at TechCorp (3 yrs)',
-        topProject: 'Distributed Task Queue (10k ops/sec)',
-        achievement: 'Reduced API p99 latency by 45%'
-      }
-    },
-    {
-      id: 1,
-      title: 'Multi-Source Scraper',
-      icon: <Globe size={16} />,
-      badge: 'EXTRACTED',
-      content: {
-        source: 'Career Page Scraper',
-        targetCompany: 'Acme AI Labs',
-        prospect: 'Sarah Chen (Head of Talent)',
-        email: 'sarah.chen@acme.ai',
-        roleMatch: 'Senior Python & Systems Architect'
-      }
-    },
-    {
-      id: 2,
-      title: 'Context Matcher',
-      icon: <Cpu size={16} />,
-      badge: '98% MATCH',
-      content: {
-        score: '0.98 Tag Overlap',
-        matchedExperience: 'Distributed Task Queue',
-        keyHook: 'Acme AI is scaling high-throughput task pipelines',
-        alignmentReason: 'Direct match on FastAPI + Python async workers'
-      }
-    },
-    {
-      id: 3,
-      title: 'LLM Personalizer',
-      icon: <Sparkles size={16} />,
-      badge: '114 WORDS',
-      content: {
-        subject: 'Quick question on Acme AI\'s async worker architecture',
-        body: 'Hi Sarah,\n\nI noticed Acme AI is expanding its Python systems architecture team. In my previous role, I built a distributed task queue handling 10k ops/sec with FastAPI and PostgreSQL, cutting p99 latency by 45%.\n\nWould love to share how we solved our queue bottlenecks if you\'re open to a brief chat this week.\n\nBest,\nAlex',
-        constraintsPassed: ['~120 Word Limit ✓', 'No Buzzwords ✓', 'Unique Hook ✓']
-      }
-    },
-    {
-      id: 4,
-      title: 'XOAUTH2 SMTP Delivery',
-      icon: <Send size={16} />,
-      badge: 'SENT (200 OK)',
-      content: {
-        mode: 'Auto Pacing (2-3/hr)',
-        authMethod: 'Google OAuth2 (XOAUTH2)',
-        sendTimestamp: new Date().toLocaleTimeString(),
-        status: 'Delivered to Primary Inbox',
-        tracking: 'IMAP Reply Polling Active'
-      }
-    }
-  ];
 
   return (
     <div className="landing-wrapper">
@@ -155,8 +75,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
 
           <nav className="landing-nav-links">
             <a href="#features">Features</a>
-            <a href="#pipeline">Pipeline Architecture</a>
-            <a href="#security">Security & XOAUTH2</a>
           </nav>
 
           <div className="landing-nav-actions">
@@ -176,7 +94,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
       <section className="landing-hero">
         <div className="hero-badge mono">
           <span className="status-dot"></span>
-          <span>SYSTEM OPERATIONAL • XOAUTH2 & SMTP COMPLIANT</span>
+          <span>SYSTEM OPERATIONAL • SECURE SMTP DISPATCH</span>
         </div>
 
         <h1 className="hero-headline">
@@ -184,8 +102,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
         </h1>
 
         <p className="hero-subline">
-          Automate hyper-personalized email campaigns with LLM context matching, multi-source scraping,
-          rate-limited queueing, and native Google OAuth2 delivery—all in an isolated multi-tenant environment.
+          Automate personalized email outreach with smart context matching,
+          rate-limited queueing, and secure SMTP delivery—all in a private, isolated workspace.
         </p>
 
         <div className="hero-cta-group">
@@ -193,10 +111,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
             <span>Launch Workspace</span>
             <ArrowRight size={16} />
           </button>
-          <a href="#pipeline" className="btn btn-secondary hero-btn">
-            <Terminal size={16} />
-            <span>Explore Architecture</span>
-          </a>
         </div>
 
         {/* Spec Pill Bar */}
@@ -212,21 +126,20 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
           </div>
           <div className="hero-spec-divider"></div>
           <div className="hero-spec-item">
-            <span className="spec-val mono">XOAUTH2</span>
-            <span className="spec-label">Google Native Sync</span>
+            <span className="spec-val mono">SMTP</span>
+            <span className="spec-label">Secure Delivery</span>
           </div>
           <div className="hero-spec-divider"></div>
           <div className="hero-spec-item">
             <span className="spec-val mono">100%</span>
-            <span className="spec-label">Isolated Multi-Tenant</span>
+            <span className="spec-label">Private & Isolated</span>
           </div>
         </div>
       </section>
 
-      {/* Split Section: Auth Card + Live Pipeline Simulator */}
-      <section id="auth-section" className="landing-split-container">
-        {/* Left Card: Auth Form */}
-        <div className="auth-card-container card">
+      {/* Centered Auth Card Container */}
+      <section id="auth-section" style={{ display: 'flex', justifyContent: 'center', margin: '32px auto 80px auto', padding: '0 24px' }}>
+        <div className="auth-card-container card" style={{ maxWidth: '420px', width: '100%' }}>
           <div className="auth-header">
             <div className="auth-pill-toggle">
               <button
@@ -253,27 +166,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
             <p className="page-subtitle">
               {isLogin
                 ? 'Sign in to access your cold outreach dashboard & queued sends.'
-                : 'Get started with isolated context tables & automated scraping.'}
+                : 'Get started with isolated context tables & outreach queues.'}
             </p>
           </div>
 
           {error && <div className="alert alert-error">{error}</div>}
-
-          {/* Official Google OAuth2 Button */}
-          <button
-            type="button"
-            onClick={handleGoogleOAuthConnect}
-            className="btn btn-secondary google-oauth-btn"
-          >
-            <Globe size={18} color="#4285F4" />
-            <span>Connect with Google (Official OAuth2)</span>
-          </button>
-
-          <div className="auth-divider">
-            <div className="divider-line"></div>
-            <span className="divider-text mono">OR EMAIL AUTH</span>
-            <div className="divider-line"></div>
-          </div>
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
@@ -323,106 +220,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
 
           <div className="auth-footer-note">
             <Shield size={14} color="var(--outline)" />
-            <span>Encrypted with AES-256 at rest. Zero plaintext logging.</span>
-          </div>
-        </div>
-
-        {/* Right Card: Interactive Live Pipeline Simulator */}
-        <div id="pipeline" className="pipeline-simulator-card card">
-          <div className="simulator-header">
-            <div className="simulator-title">
-              <Activity size={18} color="var(--primary)" />
-              <span>Live Pipeline Architecture</span>
-            </div>
-            <span className="chip chip-personalized mono">INTERACTIVE SIMULATION</span>
-          </div>
-
-          <p className="simulator-desc">
-            Click through each stage to see how raw resume context is transformed into hyper-personalized, rate-limited email dispatches:
-          </p>
-
-          {/* Stepper Tabs */}
-          <div className="simulator-tabs">
-            {pipelineSteps.map((step) => (
-              <button
-                key={step.id}
-                type="button"
-                className={`tab-step-btn ${activePipelineTab === step.id ? 'active' : ''}`}
-                onClick={() => setActivePipelineTab(step.id)}
-              >
-                {step.icon}
-                <span className="step-num mono">0{step.id + 1}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Active Step Panel */}
-          <div className="simulator-output-box">
-            <div className="output-topbar">
-              <div className="output-title">
-                <span className="step-tag mono">STAGE 0{activePipelineTab + 1}:</span>
-                <strong>{pipelineSteps[activePipelineTab].title}</strong>
-              </div>
-              <span className="chip chip-new mono">{pipelineSteps[activePipelineTab].badge}</span>
-            </div>
-
-            <div className="output-content">
-              {activePipelineTab === 0 && (
-                <div className="code-display">
-                  <div className="json-line"><span className="json-key">"candidate":</span> <span className="json-val">"{pipelineSteps[0].content.candidate}"</span></div>
-                  <div className="json-line"><span className="json-key">"skills":</span> <span className="json-val">{JSON.stringify(pipelineSteps[0].content.skills)}</span></div>
-                  <div className="json-line"><span className="json-key">"experience":</span> <span className="json-val">"{pipelineSteps[0].content.experience}"</span></div>
-                  <div className="json-line"><span className="json-key">"topProject":</span> <span className="json-val">"{pipelineSteps[0].content.topProject}"</span></div>
-                  <div className="json-line"><span className="json-key">"achievement":</span> <span className="json-val">"{pipelineSteps[0].content.achievement}"</span></div>
-                </div>
-              )}
-
-              {activePipelineTab === 1 && (
-                <div className="code-display">
-                  <div className="json-line"><span className="json-key">"source":</span> <span className="json-val">"{pipelineSteps[1].content.source}"</span></div>
-                  <div className="json-line"><span className="json-key">"targetCompany":</span> <span className="json-val">"{pipelineSteps[1].content.targetCompany}"</span></div>
-                  <div className="json-line"><span className="json-key">"prospect":</span> <span className="json-val">"{pipelineSteps[1].content.prospect}"</span></div>
-                  <div className="json-line"><span className="json-key">"email":</span> <span className="json-val">"{pipelineSteps[1].content.email}"</span></div>
-                  <div className="json-line"><span className="json-key">"roleMatch":</span> <span className="json-val">"{pipelineSteps[1].content.roleMatch}"</span></div>
-                </div>
-              )}
-
-              {activePipelineTab === 2 && (
-                <div className="code-display">
-                  <div className="json-line"><span className="json-key">"overlapScore":</span> <span className="json-val">"{pipelineSteps[2].content.score}"</span></div>
-                  <div className="json-line"><span className="json-key">"matchedExperience":</span> <span className="json-val">"{pipelineSteps[2].content.matchedExperience}"</span></div>
-                  <div className="json-line"><span className="json-key">"keyHook":</span> <span className="json-val">"{pipelineSteps[2].content.keyHook}"</span></div>
-                  <div className="json-line"><span className="json-key">"alignmentReason":</span> <span className="json-val">"{pipelineSteps[2].content.alignmentReason}"</span></div>
-                </div>
-              )}
-
-              {activePipelineTab === 3 && (
-                <div className="email-preview-box">
-                  <div className="preview-subject">
-                    <span className="mono" style={{ fontSize: '12px', color: 'var(--outline)' }}>SUBJECT:</span>
-                    <strong>{pipelineSteps[3].content.subject}</strong>
-                  </div>
-                  <div className="preview-body">
-                    {pipelineSteps[3].content.body}
-                  </div>
-                  <div className="preview-chips">
-                    {['~120 Word Limit ✓', 'No Buzzwords ✓', 'Unique Hook ✓'].map((c, idx) => (
-                      <span key={idx} className="chip chip-replied mono">{c}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {activePipelineTab === 4 && (
-                <div className="code-display">
-                  <div className="json-line"><span className="json-key">"sendMode":</span> <span className="json-val">"{pipelineSteps[4].content.mode}"</span></div>
-                  <div className="json-line"><span className="json-key">"authMethod":</span> <span className="json-val">"{pipelineSteps[4].content.authMethod}"</span></div>
-                  <div className="json-line"><span className="json-key">"timestamp":</span> <span className="json-val">"{pipelineSteps[4].content.sendTimestamp}"</span></div>
-                  <div className="json-line"><span className="json-key">"status":</span> <span className="json-val">"{pipelineSteps[4].content.status}"</span></div>
-                  <div className="json-line"><span className="json-key">"tracking":</span> <span className="json-val">"{pipelineSteps[4].content.tracking}"</span></div>
-                </div>
-              )}
-            </div>
+            <span>Encrypted with AES-256 at rest. Private tenant isolation.</span>
           </div>
         </div>
       </section>

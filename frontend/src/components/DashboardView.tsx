@@ -137,11 +137,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ contacts, queue, s
 
           <div className="card">
             <div className="card-header">
-              <h3 className="card-title">Channel Yield &amp; Lead Quality</h3>
+              <h3 className="card-title">Outreach Source Yield &amp; Quality</h3>
             </div>
             {metrics.length === 0 ? (
               <p style={{ color: 'var(--on-surface-variant)', fontSize: '14px', textAlign: 'center', padding: '20px 0' }}>
-                No scraper channel metrics available. Run auto-discover or scrape links to see performance.
+                No outreach source metrics available. Run the lead finder to see performance.
               </p>
             ) : (
               <div className="table-container">
@@ -179,7 +179,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ contacts, queue, s
             </div>
             {queue.length === 0 ? (
               <p style={{ color: 'var(--on-surface-variant)', fontSize: '14px', textAlign: 'center', padding: '20px 0' }}>
-                No contacts currently queued for send. Use Scrapers or upload contacts to populate the queue.
+                No contacts currently queued for send. Use the Lead Finder or upload contacts to populate the queue.
               </p>
             ) : (
               <div className="table-container">

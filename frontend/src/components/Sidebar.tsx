@@ -13,7 +13,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userE
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'resume', label: 'Resume & Context', icon: FileText },
-    { id: 'scrapers', label: 'Scraper Hub', icon: Search },
+    { id: 'scrapers', label: 'Lead Finder', icon: Search },
     { id: 'contacts', label: 'Contacts & Queue', icon: Users },
     { id: 'templates', label: 'Email Templates', icon: FileCode },
     { id: 'settings', label: 'Settings', icon: Settings },

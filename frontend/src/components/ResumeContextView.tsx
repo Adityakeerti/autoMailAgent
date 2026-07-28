@@ -432,7 +432,7 @@ export const ResumeContextView: React.FC<ResumeContextViewProps> = ({ onLoadingC
               </h3>
             </div>
             <p style={{ fontSize: '13px', color: 'var(--on-surface-variant)', marginBottom: '16px' }}>
-              Configured target roles and salary filters utilized by the 1-Click Auto-Discover Job Scraper.
+              Configured target roles and salary filters utilized by the 1-Click Auto-Discover Search tool.
             </p>
             <form onSubmit={handleUpdateJobPref}>
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
