@@ -29,6 +29,7 @@ class Settings(BaseSettings):
     APOLLO_API_KEY: str = ""
 
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://127.0.0.1:5173,http://localhost:8000,http://127.0.0.1:8000"
+    FRONTEND_URL: str = ""  # e.g. https://getnewjob-ai.vercel.app for production
 
     class Config:
         env_file = ".env"

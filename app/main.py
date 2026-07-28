@@ -47,21 +47,22 @@ app.include_router(contacts.router)
 app.include_router(scrapers.router)
 app.include_router(queue.router)
 
-# Mount Frontend Assets & Serve SPA Index
+# Mount Frontend Assets & Serve SPA Index (only when built dist is present — local/mono-repo)
 frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")
 assets_dir = os.path.join(frontend_dist, "assets")
 
 if os.path.exists(assets_dir):
     app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
-if os.path.exists(frontend_dist):
-    @app.get("/{full_path:path}")
-    async def serve_frontend(full_path: str):
-        # Ignore API calls if they somehow reach here via GET
-        index_file = os.path.join(frontend_dist, "index.html")
-        if os.path.exists(index_file):
-            return FileResponse(index_file)
-        return {"status": "ok", "service": "AutoMail Engine"}
+# Always register the catch-all GET route.
+# On Render (API-only), this returns a JSON status.
+# On local mono-repo with built dist, it serves the SPA index.
+@app.get("/{full_path:path}", include_in_schema=False)
+async def serve_frontend(full_path: str):
+    index_file = os.path.join(frontend_dist, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+    return {"status": "ok", "service": "AutoMail API", "docs": "/docs"}
 
 if __name__ == "__main__":
     import uvicorn

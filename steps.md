@@ -230,3 +230,11 @@ Follow in order. Do not skip ahead — each step depends on the one before it. D
 - **Hidden Architecture Diagrams:** Completely hid the "Live Pipeline Architecture" interactive simulator, removing all visual traces of search pipelines and scraper flows. (DONE)
 - **Rephrase Web Scraping references:** Changed all legally-sensitive terms such as "Multi-Source Lead Scraping", "scrapers", and "rotating user-agents" on the landing page and inner dashboard views (`ScraperView`, `DashboardView`, etc.) to client-friendly terms like "Lead Discovery & Enrichment Hub", "Lead Queue", "LinkedIn Connection System", and "Import & Validate Leads". (DONE)
 - **Destructive changes user confirmation:** Added user confirmation double-checks (`window.confirm`) to all destructive `DELETE` call hooks across all view components (resumes, experiences, projects, achievements, templates, contacts). (DONE)
+
+## Step 33 — Fix Cross-Origin 401 on /auth/me (DONE)
+- **Root cause:** On Vercel (frontend) → Render (backend) deployment, `credentials: include` cookies are blocked cross-site. The Bearer token in localStorage is correctly sent, but the session check at `/auth/me` was failing because the Vercel build didn't have `VITE_API_BASE_URL` set, causing requests to hit Vercel's own server (no backend there → 401).
+- **Fix 1 — Wrong env var name:** `LandingPage.tsx` was using `VITE_API_URL` (undefined) to prefetch the Google OAuth URL — corrected to `VITE_API_BASE_URL`.
+- **Fix 2 — Google OAuth cross-origin redirect:** After Google OAuth, backend was redirecting to its own `/` (Render), so the JWT cookie was set on the Render domain and the Vercel frontend never received it. Fixed the callback to redirect to `FRONTEND_URL/?token=<jwt>` so the Vercel app gets the token.
+- **Fix 3 — Frontend token pickup from URL:** `App.tsx` now reads `?token=` on mount, stores it in localStorage via `setToken()`, and cleans the URL before calling `/auth/me` — so the Bearer header is always present on the session check.
+- **Added `FRONTEND_URL` config setting** in `app/config.py` — set to `https://getnewjob-ai.vercel.app` on Render.
+- **Required Render env vars to set:** `FRONTEND_URL=https://getnewjob-ai.vercel.app`, `VITE_API_BASE_URL` on Vercel = `https://getyourjob-e9dn.onrender.com`, `GOOGLE_REDIRECT_URI=https://getyourjob-e9dn.onrender.com/auth/google/callback`.

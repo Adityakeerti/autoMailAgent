@@ -58,7 +58,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
 
   useEffect(() => {
     // Pre-fetch the Google OAuth URL so the warning modal can redirect immediately
-    fetch(`${import.meta.env.VITE_API_URL || ''}/auth/google/url`)
+    fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/auth/google/url`)
       .then((r) => r.json())
       .then((data) => { if (data.url) setGoogleUrl(data.url); })
       .catch(() => {});

@@ -297,7 +297,13 @@ async def google_auth_callback(code: str = Query(...), db: AsyncSession = Depend
     await db.commit()
 
     jwt_token = create_access_token(user_id=user.id, email=user.email)
-    response = RedirectResponse(url="/")
+
+    # Redirect to frontend with token as URL param (needed for cross-origin Vercel → Render setup)
+    # Falls back to "/" (same-origin) when FRONTEND_URL is not configured
+    frontend_base = settings.FRONTEND_URL.rstrip("/") if settings.FRONTEND_URL else ""
+    redirect_url = f"{frontend_base}/?token={jwt_token}" if frontend_base else f"/?token={jwt_token}"
+
+    response = RedirectResponse(url=redirect_url)
     response.set_cookie(
         key="token",
         value=jwt_token,

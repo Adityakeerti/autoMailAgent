@@ -9,8 +9,6 @@ services:
         value: 3.11.9
       - key: DATABASE_URL
         sync: false
-      - key: STORAGE_BUCKET_URL
-        sync: false
       - key: JWT_SECRET
         generateValue: true
       - key: ENCRYPTION_KEY
@@ -21,3 +19,13 @@ services:
         sync: false
       - key: GITHUB_TOKEN
         sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        value: https://getyourjob-e9dn.onrender.com/auth/google/callback
+      - key: FRONTEND_URL
+        value: https://getnewjob-ai.vercel.app
+      - key: ALLOWED_ORIGINS
+        value: https://getnewjob-ai.vercel.app,https://getyourjob-e9dn.onrender.com

@@ -1,8 +1,10 @@
 const API_BASE = import.meta.env.VITE_API_BASE_URL || "";
 
-export const getToken = (): string | null => null;
-export const setToken = (_token: string) => {};
-export const removeToken = () => {};
+const TOKEN_KEY = "getnewjob_token";
+
+export const getToken = (): string | null => localStorage.getItem(TOKEN_KEY);
+export const setToken = (token: string) => localStorage.setItem(TOKEN_KEY, token);
+export const removeToken = () => localStorage.removeItem(TOKEN_KEY);
 
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const token = getToken();

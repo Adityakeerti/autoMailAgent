@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { api } from './api';
+import { api, setToken } from './api';
 import { LandingPage } from './components/LandingPage';
 import { Sidebar } from './components/Sidebar';
 import { DashboardView } from './components/DashboardView';
@@ -21,10 +21,20 @@ export function App() {
   const [metrics, setMetrics] = useState<any[]>([]);
   const [userEmail, setUserEmail] = useState<string>('');
 
-  // Verify cookie session on mount
+  // Verify cookie session on mount (also handles ?token= from Google OAuth redirect)
   useEffect(() => {
     const verifySession = async () => {
       setPageLoading(true);
+
+      // Extract token from URL if redirected from Google OAuth callback
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlToken = urlParams.get('token');
+      if (urlToken) {
+        setToken(urlToken);
+        // Clean up URL so token doesn't linger in the address bar
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+
       try {
         const me = await api.getMe();
         setUserEmail(me.email);
