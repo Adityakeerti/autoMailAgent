@@ -1,33 +1,49 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Check, X, Sparkles, Eye, Trash2 } from 'lucide-react';
+import { Plus, Check, X, Sparkles, Eye, Trash2, Loader2, ExternalLink, Send } from 'lucide-react';
 import { api } from '../api';
+import { SkeletonTable } from './Skeleton';
 
-export const ContactsQueueView: React.FC = () => {
+interface ContactsQueueViewProps {
+  onLoadingChange?: (loading: boolean) => void;
+}
+
+export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingChange }) => {
   const [contacts, setContacts] = useState<any[]>([]);
   const [queue, setQueue] = useState<any[]>([]);
+  const [genericQueue, setGenericQueue] = useState<any[]>([]);
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [msg, setMsg] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [personalizingId, setPersonalizingId] = useState<number | null>(null);
+  const [actionId, setActionId] = useState<number | null>(null);
+  const [sendingId, setSendingId] = useState<number | null>(null);
 
   // Preview Modal
   const [selectedContact, setSelectedContact] = useState<any | null>(null);
 
   // New Contact Form Modal
   const [showAddModal, setShowAddModal] = useState(false);
+  const [addingContact, setAddingContact] = useState(false);
   const [newContact, setNewContact] = useState({
     name: '', company: '', role: '', email: '', source: 'manual', job_posting_url: ''
   });
 
   const loadData = async () => {
+    onLoadingChange?.(true);
     try {
-      const [cList, qList] = await Promise.all([
+      const [cList, qList, gList] = await Promise.all([
         api.listContacts(),
         api.listQueue(),
+        api.listGenericQueue().catch(() => []),
       ]);
       setContacts(cList);
       setQueue(qList);
+      setGenericQueue(gList);
     } catch (e: any) {
       console.error(e);
+    } finally {
+      setInitialLoading(false);
+      onLoadingChange?.(false);
     }
   };
 
@@ -37,6 +53,7 @@ export const ContactsQueueView: React.FC = () => {
 
   const handleAddContact = async (e: React.FormEvent) => {
     e.preventDefault();
+    setAddingContact(true);
     try {
       await api.createContact(newContact);
       setNewContact({ name: '', company: '', role: '', email: '', source: 'manual', job_posting_url: '' });
@@ -44,11 +61,14 @@ export const ContactsQueueView: React.FC = () => {
       await loadData();
     } catch (err: any) {
       setMsg('Error adding contact: ' + err.message);
+    } finally {
+      setAddingContact(false);
     }
   };
 
   const handlePersonalize = async (id: number) => {
-    setLoading(true);
+    setPersonalizingId(id);
+    onLoadingChange?.(true);
     try {
       await api.personalizeContact(id);
       setMsg('LLM generated personalized email placeholders for contact!');
@@ -56,27 +76,49 @@ export const ContactsQueueView: React.FC = () => {
     } catch (err: any) {
       setMsg('Personalize error: ' + err.message);
     } finally {
-      setLoading(false);
+      setPersonalizingId(null);
+      onLoadingChange?.(false);
     }
   };
 
   const handleApprove = async (id: number) => {
+    setActionId(id);
     try {
       await api.approveQueueItem(id);
       setMsg('Contact approved and queued for send!');
       await loadData();
     } catch (err: any) {
       setMsg('Approval error: ' + err.message);
+    } finally {
+      setActionId(null);
     }
   };
 
   const handleReject = async (id: number) => {
+    setActionId(id);
     try {
       await api.rejectQueueItem(id);
       setMsg('Contact rejected.');
       await loadData();
     } catch (err: any) {
       setMsg('Reject error: ' + err.message);
+    } finally {
+      setActionId(null);
+    }
+  };
+
+  const handleSendNow = async (id: number) => {
+    setSendingId(id);
+    onLoadingChange?.(true);
+    try {
+      await api.sendMailNow(id);
+      setMsg('✅ Email sent successfully!');
+      await loadData();
+    } catch (err: any) {
+      setMsg('Send error: ' + err.message);
+    } finally {
+      setSendingId(null);
+      onLoadingChange?.(false);
     }
   };
 
@@ -105,7 +147,10 @@ export const ContactsQueueView: React.FC = () => {
             <Sparkles size={18} color="var(--primary)" /> Send Queue Approval ({queue.length})
           </h3>
         </div>
-        {queue.length === 0 ? (
+
+        {initialLoading ? (
+          <SkeletonTable rows={3} columns={5} />
+        ) : queue.length === 0 ? (
           <p style={{ color: 'var(--on-surface-variant)', fontSize: '14px', textAlign: 'center', padding: '20px 0' }}>
             No contacts currently awaiting review or queue approval.
           </p>
@@ -116,6 +161,7 @@ export const ContactsQueueView: React.FC = () => {
                 <tr>
                   <th>Contact</th>
                   <th>Company & Role</th>
+                  <th>JD</th>
                   <th>Status</th>
                   <th>Subject / Preview</th>
                   <th>Actions</th>
@@ -132,6 +178,16 @@ export const ContactsQueueView: React.FC = () => {
                       <div>{item.company || 'N/A'}</div>
                       <div style={{ fontSize: '12px', color: 'var(--on-surface-variant)' }}>{item.role || 'N/A'}</div>
                     </td>
+                    <td>
+                      {item.job_posting_url ? (
+                        <a href={item.job_posting_url} target="_blank" rel="noopener noreferrer"
+                           className="btn btn-secondary btn-sm" title="View Job Description">
+                          <ExternalLink size={12} /> JD
+                        </a>
+                      ) : (
+                        <span style={{ color: 'var(--outline)', fontSize: '11px' }}>—</span>
+                      )}
+                    </td>
                     <td><span className={`chip chip-${item.status}`}>{item.status}</span></td>
                     <td style={{ maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                       {item.subject ? item.subject : <span style={{ color: 'var(--outline)', fontStyle: 'italic' }}>Not personalized yet</span>}
@@ -144,16 +200,119 @@ export const ContactsQueueView: React.FC = () => {
                           </button>
                         )}
                         {item.status === 'new' && (
-                          <button className="btn btn-primary btn-sm" onClick={() => handlePersonalize(item.id)} disabled={loading}>
-                            <Sparkles size={14} /> Personalize
+                          <button className="btn btn-primary btn-sm" onClick={() => handlePersonalize(item.id)} disabled={personalizingId === item.id}>
+                            {personalizingId === item.id ? (
+                              <><Loader2 size={14} className="spin-icon" /> Matching LLM...</>
+                            ) : (
+                              <><Sparkles size={14} /> Personalize</>
+                            )}
                           </button>
                         )}
                         {item.status === 'personalized' && (
-                          <button className="btn btn-primary btn-sm" onClick={() => handleApprove(item.id)}>
-                            <Check size={14} /> Approve
+                          <button className="btn btn-primary btn-sm" onClick={() => handleApprove(item.id)} disabled={actionId === item.id || sendingId === item.id}>
+                            {actionId === item.id ? (
+                              <><Loader2 size={14} className="spin-icon" /> Approving...</>
+                            ) : (
+                              <><Check size={14} /> Approve</>
+                            )}
                           </button>
                         )}
-                        <button className="btn btn-secondary btn-sm" onClick={() => handleReject(item.id)}>
+                        <button className="btn btn-success btn-sm" onClick={() => handleSendNow(item.id)} disabled={sendingId === item.id || actionId === item.id}>
+                          {sendingId === item.id ? (
+                            <><Loader2 size={14} className="spin-icon" /> Sending...</>
+                          ) : (
+                            <><Send size={12} /> Send Now</>
+                          )}
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => handleReject(item.id)} disabled={actionId === item.id || sendingId === item.id}>
+                          <X size={14} color="var(--error)" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Unverified / Generic Queue Section */}
+      <div className="card" style={{ marginTop: '24px' }}>
+        <div className="card-header">
+          <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Sparkles size={18} color="#d97706" /> Unverified / Generic Queue Approval ({genericQueue.length})
+          </h3>
+        </div>
+
+        {initialLoading ? (
+          <SkeletonTable rows={3} columns={5} />
+        ) : genericQueue.length === 0 ? (
+          <p style={{ color: 'var(--on-surface-variant)', fontSize: '14px', textAlign: 'center', padding: '20px 0' }}>
+            No generic domain contacts currently in queue.
+          </p>
+        ) : (
+          <div className="table-container">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Contact (Guessed)</th>
+                  <th>Company &amp; Role</th>
+                  <th>JD</th>
+                  <th>Status</th>
+                  <th>Subject / Preview</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {genericQueue.map((item) => (
+                  <tr key={item.id}>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{item.name || 'Hiring Manager'}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--outline)' }}>{item.email}</div>
+                    </td>
+                    <td>
+                      <div>{item.company || 'N/A'}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--on-surface-variant)' }}>{item.role || 'N/A'}</div>
+                    </td>
+                    <td>
+                      {item.job_posting_url ? (
+                        <a href={item.job_posting_url} target="_blank" rel="noopener noreferrer"
+                           className="btn btn-secondary btn-sm" title="View Job Description">
+                          <ExternalLink size={12} /> JD
+                        </a>
+                      ) : (
+                        <span style={{ color: 'var(--outline)', fontSize: '11px' }}>—</span>
+                      )}
+                    </td>
+                    <td><span className={`chip chip-${item.status}`}>{item.status}</span></td>
+                    <td style={{ maxWidth: '240px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {item.subject ? item.subject : <span style={{ color: 'var(--outline)', fontStyle: 'italic' }}>Will use plain company template</span>}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {item.subject && (
+                          <button className="btn btn-secondary btn-sm" onClick={() => setSelectedContact(item)}>
+                            <Eye size={14} /> Preview
+                          </button>
+                        )}
+                        {item.status === 'generic_new' && (
+                          <button className="btn btn-primary btn-sm" onClick={() => handleApprove(item.id)} disabled={actionId === item.id || sendingId === item.id}>
+                            {actionId === item.id ? (
+                              <><Loader2 size={14} className="spin-icon" /> Approving...</>
+                            ) : (
+                              <><Check size={14} /> Approve</>
+                            )}
+                          </button>
+                        )}
+                        <button className="btn btn-success btn-sm" onClick={() => handleSendNow(item.id)} disabled={sendingId === item.id || actionId === item.id}>
+                          {sendingId === item.id ? (
+                            <><Loader2 size={14} className="spin-icon" /> Sending...</>
+                          ) : (
+                            <><Send size={12} /> Send Now</>
+                          )}
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => handleReject(item.id)} disabled={actionId === item.id || sendingId === item.id}>
                           <X size={14} color="var(--error)" />
                         </button>
                       </div>
@@ -183,46 +342,66 @@ export const ContactsQueueView: React.FC = () => {
           </div>
         </div>
 
-        <div className="table-container">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>Recipient</th>
-                <th>Company</th>
-                <th>Role</th>
-                <th>Source</th>
-                <th>Status</th>
-                <th>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredContacts.map((c) => (
-                <tr key={c.id}>
-                  <td>
-                    <div style={{ fontWeight: 600 }}>{c.name || 'Hiring Manager'}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--outline)' }}>{c.email}</div>
-                  </td>
-                  <td>{c.company || 'N/A'}</td>
-                  <td>{c.role || 'N/A'}</td>
-                  <td style={{ fontSize: '12px' }}>{c.source || 'manual'}</td>
-                  <td><span className={`chip chip-${c.status}`}>{c.status}</span></td>
-                  <td>
-                    <div style={{ display: 'flex', gap: '6px' }}>
-                      {c.body && (
-                        <button className="btn btn-secondary btn-sm" onClick={() => setSelectedContact(c)}>
-                          <Eye size={14} />
-                        </button>
-                      )}
-                      <button className="btn btn-secondary btn-sm" onClick={async () => { await api.deleteContact(c.id); loadData(); }}>
-                        <Trash2 size={14} color="var(--error)" />
-                      </button>
-                    </div>
-                  </td>
+        {initialLoading ? (
+          <SkeletonTable rows={5} columns={6} />
+        ) : (
+          <div className="table-container">
+            <table className="table">
+              <thead>
+                <tr>
+                  <th>Recipient</th>
+                  <th>Company</th>
+                  <th>Role</th>
+                  <th>JD Link</th>
+                  <th>Source</th>
+                  <th>Status</th>
+                  <th>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {filteredContacts.map((c) => (
+                  <tr key={c.id}>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{c.name || 'Hiring Manager'}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--outline)' }}>{c.email}</div>
+                    </td>
+                    <td>{c.company || 'N/A'}</td>
+                    <td>{c.role || 'N/A'}</td>
+                    <td>
+                      {c.job_posting_url ? (
+                        <a
+                          href={c.job_posting_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-secondary btn-sm"
+                          title={c.job_posting_url}
+                        >
+                          <ExternalLink size={12} /> JD
+                        </a>
+                      ) : (
+                        <span style={{ color: 'var(--outline)', fontSize: '11px' }}>—</span>
+                      )}
+                    </td>
+                    <td style={{ fontSize: '12px' }}>{c.source || 'manual'}</td>
+                    <td><span className={`chip chip-${c.status}`}>{c.status}</span></td>
+                    <td>
+                      <div style={{ display: 'flex', gap: '6px' }}>
+                        {c.body && (
+                          <button className="btn btn-secondary btn-sm" onClick={() => setSelectedContact(c)}>
+                            <Eye size={14} />
+                          </button>
+                        )}
+                        <button className="btn btn-secondary btn-sm" onClick={async () => { if (window.confirm("Are you sure you want to delete this contact?")) { await api.deleteContact(c.id); loadData(); } }}>
+                          <Trash2 size={14} color="var(--error)" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Email Preview Modal */}
@@ -238,6 +417,19 @@ export const ContactsQueueView: React.FC = () => {
             <div style={{ marginBottom: '16px', fontSize: '13px' }}>
               <div><strong>To:</strong> {selectedContact.name} &lt;{selectedContact.email}&gt;</div>
               <div><strong>Company:</strong> {selectedContact.company}</div>
+              {selectedContact.job_posting_url && (
+                <div style={{ marginTop: '4px' }}>
+                  <strong>JD:</strong>{' '}
+                  <a
+                    href={selectedContact.job_posting_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{ color: 'var(--primary)', textDecoration: 'underline' }}
+                  >
+                    View Job Description ↗
+                  </a>
+                </div>
+              )}
               <div><strong>Subject:</strong> {selectedContact.subject}</div>
             </div>
             <div style={{ padding: '16px', background: 'var(--surface-container-low)', borderRadius: '6px', fontSize: '14px', whiteSpace: 'pre-wrap', fontFamily: 'var(--font-geist)' }}>
@@ -248,6 +440,23 @@ export const ContactsQueueView: React.FC = () => {
               <div style={{ marginTop: '16px', padding: '12px', background: '#eff6ff', borderRadius: '6px', fontSize: '12px' }}>
                 <strong style={{ color: 'var(--primary)' }}>LLM Dynamic Placeholders:</strong>
                 <pre style={{ marginTop: '4px', whiteSpace: 'pre-wrap' }}>{JSON.stringify(selectedContact.personalized_data, null, 2)}</pre>
+              </div>
+            )}
+
+            {['new', 'personalized', 'queued'].includes(selectedContact.status) && (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px', marginTop: '20px', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+                <button className="btn btn-secondary" onClick={() => setSelectedContact(null)}>Cancel</button>
+                <button className="btn btn-success" onClick={async () => {
+                  const id = selectedContact.id;
+                  setSelectedContact(null);
+                  await handleSendNow(id);
+                }} disabled={sendingId === selectedContact.id}>
+                  {sendingId === selectedContact.id ? (
+                    <><Loader2 size={16} className="spin-icon" /> Sending Email...</>
+                  ) : (
+                    <><Send size={16} /> Send Email Now</>
+                  )}
+                </button>
               </div>
             )}
           </div>
@@ -281,8 +490,12 @@ export const ContactsQueueView: React.FC = () => {
                 <label className="form-label">Role Title</label>
                 <input type="text" className="form-input" value={newContact.role} onChange={(e) => setNewContact({ ...newContact, role: e.target.value })} />
               </div>
-              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '12px' }}>
-                Save Contact
+              <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '12px' }} disabled={addingContact}>
+                {addingContact ? (
+                  <><Loader2 size={16} className="spin-icon" /> Saving Contact...</>
+                ) : (
+                  'Save Contact'
+                )}
               </button>
             </form>
           </div>
