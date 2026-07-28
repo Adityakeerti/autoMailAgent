@@ -12,7 +12,7 @@ from app.services.llm import llm_service
 logger = logging.getLogger("resume_parser")
 
 EXTRACTION_SYSTEM_PROMPT = """
-You are an expert HR & resume parser. Your task is to extract dynamic context information from the provided resume text into a strict JSON format matching this exact schema:
+You are an expert HR & resume parser. Your task is to extract complete, high-depth context information from the provided resume text into a strict JSON format matching this exact schema:
 
 {
   "profile": {
@@ -24,9 +24,9 @@ You are an expert HR & resume parser. Your task is to extract dynamic context in
   },
   "experience": [
     {
-      "title": "string",
+      "title": "string (Company / Role)",
       "dates": "string or null",
-      "one_liner": "Plain text summary of what was built and problem solved. No superlatives.",
+      "one_liner": "Detailed description containing all bullet points, technical achievements, architecture, and impact from the resume without oversimplifying.",
       "stack": ["skill1", "skill2"],
       "tags": ["backend", "python", "fastapi"]
     }
@@ -35,7 +35,7 @@ You are an expert HR & resume parser. Your task is to extract dynamic context in
     {
       "title": "string",
       "dates": "string or null",
-      "one_liner": "Plain text description of project and problem solved.",
+      "one_liner": "Complete detailed description capturing all features, architecture, tools, frameworks, and metrics from the resume. Do NOT oversimplify or cut depth.",
       "stack": ["skill1", "skill2"],
       "tags": ["react", "frontend", "aws"],
       "link": "url or null",
@@ -45,14 +45,15 @@ You are an expert HR & resume parser. Your task is to extract dynamic context in
   ],
   "achievements": [
     {
-      "text": "Plain text achievement description"
+      "text": "Full detailed achievement text"
     }
   ]
 }
 
 Strict Rules:
 - Return ONLY valid JSON, no markdown code block wrappers or conversational text.
-- Do NOT invent facts or superlatives ("proud", "spearheaded revolution"). State facts plainly.
+- Preserve full technical depth, bullet points, metrics, and features for projects & experiences. Do NOT reduce a 3-bullet project into a 5-word sentence.
+- Do NOT invent false claims or superlatives not present in the resume.
 """
 
 def extract_text_from_file_bytes(file_bytes: bytes, filename: str) -> str:
@@ -64,7 +65,6 @@ def extract_text_from_file_bytes(file_bytes: bytes, filename: str) -> str:
         except Exception as e:
             logger.warning(f"PdfReader failed: {e}")
     
-    # Plain text fallback
     try:
         return file_bytes.decode("utf-8", errors="ignore")
     except Exception:
@@ -72,7 +72,7 @@ def extract_text_from_file_bytes(file_bytes: bytes, filename: str) -> str:
 
 async def parse_and_populate_resume(resume_id: int, db: AsyncSession, mode: str = "keep_unique"):
     """
-    Parse resume and populate user context layer.
+    Parse resume and populate user context layer preserving complete technical depth.
     :param mode: 'replace' (remove old info and replace) OR 'keep_unique' (keep existing and append unique items)
     """
     res = await db.execute(select(Resume).where(Resume.id == resume_id))
@@ -89,8 +89,7 @@ async def parse_and_populate_resume(resume_id: int, db: AsyncSession, mode: str 
             await db.commit()
             return
 
-        user_prompt = f"Resume text:\n{raw_text[:4000]}"
-        # Use high_tier=True for early resume extraction (bigger models!)
+        user_prompt = f"Resume text:\n{raw_text[:6000]}"
         llm_response = await llm_service.generate_text(
             prompt=user_prompt,
             system_prompt=EXTRACTION_SYSTEM_PROMPT,
@@ -106,7 +105,6 @@ async def parse_and_populate_resume(resume_id: int, db: AsyncSession, mode: str 
         user_id = resume.user_id
 
         if mode == "replace":
-            # Clear old context items if replace mode chosen
             await db.execute(delete(ContextExperience).where(ContextExperience.user_id == user_id))
             await db.execute(delete(ContextProject).where(ContextProject.user_id == user_id))
             await db.execute(delete(ContextAchievement).where(ContextAchievement.user_id == user_id))
@@ -126,7 +124,6 @@ async def parse_and_populate_resume(resume_id: int, db: AsyncSession, mode: str 
         if prof_data.get("github_url"): cp.github_url = prof_data.get("github_url")
         if prof_data.get("email"): cp.email = prof_data.get("email")
 
-        # Get existing items to prevent duplicates if mode == 'keep_unique'
         existing_exp_titles = set()
         existing_proj_titles = set()
         existing_ach_texts = set()

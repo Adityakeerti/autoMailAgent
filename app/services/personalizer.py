@@ -11,21 +11,64 @@ from app.services.matcher import find_best_matching_context
 logger = logging.getLogger("personalizer")
 
 PERSONALIZER_SYSTEM_PROMPT = """
-You are an expert cold email copywriter. Generate tailored placeholders for a job application cold email.
+You are an expert cold email copywriter. Generate high-impact, tailored placeholders for a job application cold email using full technical context.
 
 Strict Tone & Style Rules:
-- Tone: Professional, direct, plain statement of facts and technical problem solved.
-- Absolute Prohibition: NO superlatives (e.g., "amazing", "revolutionary", "proud to share", "thrilled to connect").
-- Length: Concise. The final text must keep the overall email under ~120 words total.
-- Hook phrasing: Must be unique and relevant to the company or recipient's domain.
+- Tone: Technical, direct, and factual. Focus on actual system architecture, frameworks, algorithms, or technical problems solved.
+- Absolute Prohibition: NO generic corporate fluff or superlatives (e.g., "amazing", "revolutionary", "proud to share", "thrilled to connect").
+- Project Line: Synthesize 1-2 punchy sentences highlighting the most relevant technical features, tech stack, or engineering achievements from the user's detailed project/experience context.
+- Email Word Count: Keep output concise so total email remains under ~120 words.
+- Hook Phrasing: Must be unique and domain-specific to the recipient or target company.
 
 Return a JSON object with these exact keys:
 {
   "PERSONAL_HOOK": "One short sentence connecting to recipient/company domain.",
-  "RELEVANT_PROJECT_LINE": "1-2 sentences describing what project/experience was built and technical problem solved plain and clear.",
-  "WHY_THIS_COMPANY": "One short sentence why their technology or mission is relevant."
+  "RELEVANT_PROJECT_LINE": "1-2 sentences highlighting key technical architecture, stack, and problem solved from user context.",
+  "WHY_THIS_COMPANY": "One short sentence connecting user's technical background to company mission/tech."
 }
 """
+
+PERSONALIZER_SYSTEM_PROMPT_NO_COMPANY = """
+You are an expert cold email copywriter. Generate high-impact, tailored placeholders for a job application cold email using full technical context.
+
+IMPORTANT: The company name for this contact is unknown or uncertain. Do NOT invent or guess the company name.
+Instead, use generic but warm phrasing like "your team", "your organization", "your engineering team", or "your company".
+
+Strict Tone & Style Rules:
+- Tone: Technical, direct, and factual. Focus on actual system architecture, frameworks, algorithms, or technical problems solved.
+- Absolute Prohibition: NO generic corporate fluff or superlatives (e.g., "amazing", "revolutionary", "proud to share", "thrilled to connect").
+- Do NOT use any company name — use "your team" / "your engineering team" / "your organization" throughout.
+- Project Line: Synthesize 1-2 punchy sentences highlighting the most relevant technical features, tech stack, or engineering achievements from the user's detailed project/experience context.
+- Email Word Count: Keep output concise so total email remains under ~120 words.
+
+Return a JSON object with these exact keys:
+{
+  "PERSONAL_HOOK": "One short sentence connecting to the recipient's domain/role, WITHOUT naming the company.",
+  "RELEVANT_PROJECT_LINE": "1-2 sentences highlighting key technical architecture, stack, and problem solved from user context.",
+  "WHY_THIS_COMPANY": "One short sentence about why the user wants to join this team, WITHOUT naming the company."
+}
+"""
+
+
+def _company_confidence(company: Optional[str]) -> str:
+    """
+    Returns 'high' if company name looks like a real company name,
+    'low' if it's a domain-derived guess or looks generic/suspicious.
+    'none' if company is missing entirely.
+    """
+    if not company:
+        return "none"
+    c = company.strip()
+    # Known generic fallbacks that must never be used
+    generic = {"target company", "hiring manager", "company", "unknown", "n/a", "na", "recruiter"}
+    if c.lower() in generic:
+        return "low"
+    # If it's just a single word that looks like a domain name part (all lowercase, no spaces)
+    # it was likely derived from a URL — lower confidence
+    if c == c.lower() and " " not in c and len(c) <= 15:
+        return "low"
+    return "high"
+
 
 async def generate_personalized_placeholders(
     contact: Contact,
@@ -52,26 +95,41 @@ async def generate_personalized_placeholders(
     context_desc = ""
     if context_item:
         if context_type == "project":
-            context_desc = f"Project: {context_item.title}. Summary: {context_item.one_liner}. Stack: {context_item.stack}."
+            context_desc = f"Project Title: {context_item.title}\nFull Details & Architecture: {context_item.one_liner}\nTech Stack: {', '.join(context_item.stack or [])}"
         else:
-            context_desc = f"Experience: {context_item.title}. Summary: {context_item.one_liner}. Stack: {context_item.stack}."
+            context_desc = f"Experience Title: {context_item.title}\nFull Details & Achievements: {context_item.one_liner}\nTech Stack: {', '.join(context_item.stack or [])}"
+
+    # --- Company confidence check ---
+    confidence = _company_confidence(contact.company)
+    use_company_name = confidence == "high"
+
+    if use_company_name:
+        system_prompt = PERSONALIZER_SYSTEM_PROMPT
+        company_line = f"Target Company: {contact.company}"
+    else:
+        # Low/no confidence: instruct LLM to not use a company name
+        system_prompt = PERSONALIZER_SYSTEM_PROMPT_NO_COMPANY
+        company_line = "Target Company: [UNKNOWN — do NOT invent a company name, use 'your team' phrasing]"
 
     user_prompt = f"""
 Target Recipient: {contact.name or 'Hiring Manager'}
-Target Company: {contact.company or 'Target Company'}
+{company_line}
 Target Role: {contact.role or 'Software Engineer'}
 Source/Job Link: {contact.job_posting_url or 'N/A'}
 
-Matched User Context:
+Full User Engineering Context:
 {context_desc or 'General Software Engineering experience building web applications and backend systems.'}
 {avoid_clause}
 """
 
+    # Safe fallback values that respect confidence
+    safe_company = contact.company if use_company_name else "your team"
+    safe_company_ref = contact.company if use_company_name else "your engineering team"
+
     try:
-        # Use high_tier=False for med-high level LLMs on small tasks (hook lines, project lines)
         response_text = await llm_service.generate_text(
             prompt=user_prompt,
-            system_prompt=PERSONALIZER_SYSTEM_PROMPT,
+            system_prompt=system_prompt,
             high_tier=False,
             json_mode=True
         )
@@ -82,14 +140,14 @@ Matched User Context:
 
         data = json.loads(json_str)
         return {
-            "PERSONAL_HOOK": data.get("PERSONAL_HOOK", f"I came across {contact.company or 'your team'} and was impressed by your engineering focus."),
+            "PERSONAL_HOOK": data.get("PERSONAL_HOOK", f"I came across {safe_company} and was impressed by your engineering focus."),
             "RELEVANT_PROJECT_LINE": data.get("RELEVANT_PROJECT_LINE", f"I recently built projects relevant to {contact.role or 'software development'} focusing on scalability and performance."),
-            "WHY_THIS_COMPANY": data.get("WHY_THIS_COMPANY", f"I am particularly drawn to {contact.company or 'your team'}'s engineering culture.")
+            "WHY_THIS_COMPANY": data.get("WHY_THIS_COMPANY", f"I am particularly drawn to {safe_company_ref}'s engineering culture.")
         }
     except Exception as e:
         logger.warning(f"LLM personalizer fallback due to error: {e}")
         return {
-            "PERSONAL_HOOK": f"I noticed {contact.company or 'your company'}'s work in software engineering.",
+            "PERSONAL_HOOK": f"I noticed {safe_company}'s work in software engineering.",
             "RELEVANT_PROJECT_LINE": f"I have hands-on experience building web and backend applications.",
-            "WHY_THIS_COMPANY": f"I am eager to contribute to {contact.company or 'your team'}."
+            "WHY_THIS_COMPANY": f"I am eager to contribute to {safe_company_ref}."
         }

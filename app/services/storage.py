@@ -1,7 +1,10 @@
 import os
 import uuid
+import logging
 from fastapi import UploadFile
 from app.config import settings
+
+logger = logging.getLogger("storage")
 
 class StorageService:
     def __init__(self):
@@ -26,5 +29,14 @@ class StorageService:
             with open(file_path, "rb") as f:
                 return f.read()
         raise FileNotFoundError(f"File not found: {file_path}")
+
+    def delete_resume_file(self, file_path: str) -> bool:
+        try:
+            if os.path.exists(file_path):
+                os.remove(file_path)
+                return True
+        except Exception as e:
+            logger.warning(f"Could not delete resume file {file_path}: {e}")
+        return False
 
 storage_service = StorageService()
