@@ -68,5 +68,19 @@ Resume & Projects: {{PORTFOLIO_URL}}
 
 Thanks,
 {{USER_NAME}}"""
+    },
+    {
+        "category": "Generic Company Outreach",
+        "subject_template": "Engineering opportunities at {{COMPANY}}",
+        "body_template": """Hi team,
+
+I noticed {{COMPANY}} is hiring for a {{ROLE_TITLE}} position. I wanted to reach out and express my interest in joining your engineering organization.
+
+I have hands-on experience building scalable applications and working with modern web and backend technologies. You can view my portfolio at {{PORTFOLIO_URL}} and find my project repositories at {{GITHUB_URL}}.
+
+If you have any open slots or would be open to a brief chat, please let me know.
+
+Best regards,
+{{USER_NAME}}"""
     }
 ]
