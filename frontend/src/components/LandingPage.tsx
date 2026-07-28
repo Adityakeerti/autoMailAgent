@@ -74,8 +74,8 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
               <Mail size={20} />
             </div>
             <div className="landing-logo-text">
-              <span className="brand-name">AutoMail</span>
-              <span className="brand-badge mono">COLD ENGINE v2.4</span>
+              <span className="brand-name">GetNewJob AI</span>
+              <span className="brand-badge mono">JOB OUTREACH v2.4</span>
             </div>
           </div>
 
@@ -100,16 +100,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
       <section className="landing-hero">
         <div className="hero-badge mono">
           <span className="status-dot"></span>
-          <span>SYSTEM OPERATIONAL • SECURE SMTP DISPATCH</span>
+          <span>AI ACTIVE • SMART JOB OUTREACH ENGINE</span>
         </div>
 
         <h1 className="hero-headline">
-          Precision Cold Outreach Engine for High-Performance Teams
+          Land Your Next Job Faster with AI-Powered Outreach
         </h1>
 
         <p className="hero-subline">
-          Automate personalized email outreach with smart context matching,
-          rate-limited queueing, and secure SMTP delivery—all in a private, isolated workspace.
+          Automate personalized cold emails to recruiters and hiring managers using your resume as context.
+          Human-paced delivery, AES-256 encryption, and zero-spam throttling — all in your private workspace.
         </p>
 
         <div className="hero-cta-group">
@@ -122,13 +122,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
         {/* Spec Pill Bar */}
         <div className="hero-spec-grid">
           <div className="hero-spec-item">
-            <span className="spec-val mono">2-3 / hr</span>
-            <span className="spec-label">Rate-Limited Pacing</span>
+            <span className="spec-val mono">AI</span>
+            <span className="spec-label">Resume-Driven Context</span>
           </div>
           <div className="hero-spec-divider"></div>
           <div className="hero-spec-item">
-            <span className="spec-val mono">~120 Wds</span>
-            <span className="spec-label">Strict LLM Word Cap</span>
+            <span className="spec-val mono">2-3/hr</span>
+            <span className="spec-label">Human-Paced Sending</span>
           </div>
           <div className="hero-spec-divider"></div>
           <div className="hero-spec-item">
@@ -339,10 +339,10 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
               <div className="landing-logo-icon">
                 <Mail size={18} />
               </div>
-              <span className="brand-name">AutoMail</span>
+              <span className="brand-name">GetNewJob AI</span>
             </div>
             <p className="footer-copy">
-              Precision Cold Email Outreach Engine
+              AI-Powered Job Outreach Engine
             </p>
           </div>
           <div className="footer-status mono">
@@ -359,7 +359,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
             <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚠️</div>
             <h3 style={{ marginBottom: '12px', fontSize: '18px', fontWeight: 600 }}>Google Login Verification Pending</h3>
             <p style={{ fontSize: '13px', color: 'var(--on-surface-variant)', lineHeight: '1.6', marginBottom: '16px' }}>
-              AutoMail's Google OAuth App is currently undergoing verification. Access is restricted to pre-approved/whitelisted email accounts (up to 100 users).
+              GetNewJob AI's Google OAuth App is currently undergoing verification. Access is restricted to pre-approved/whitelisted email accounts (up to 100 users).
             </p>
 
             {/* Request Whitelisting Form */}
@@ -390,7 +390,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onSuccess }) => {
                   💬 Request via WhatsApp
                 </a>
                 <a
-                  href={requestEmail ? `mailto:adityacodes404@gmail.com?subject=AutoMail%20Whitelist%20Request&body=Please%20whitelist%20my%20email%3A%20${encodeURIComponent(requestEmail)}` : '#'}
+                  href={requestEmail ? `mailto:adityacodes404@gmail.com?subject=GetNewJob%20AI%20Whitelist%20Request&body=Please%20whitelist%20my%20email%3A%20${encodeURIComponent(requestEmail)}` : '#'}
                   className="btn btn-secondary btn-sm"
                   style={{
                     justifyContent: 'center',

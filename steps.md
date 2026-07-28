@@ -224,4 +224,9 @@ Follow in order. Do not skip ahead — each step depends on the one before it. D
 - **Auth token storage security:** Switched from insecure `localStorage` storage to secure, HttpOnly, SameSite=Lax cookie-based JWT session authentication. (DONE)
 - **Clean OAuth callback redirection:** Removed `?token=` parameter leakage from URL query strings in OAuth callbacks. Token is now directly written as a secure cookie in the redirect response header, pointing cleanly to `/`. (DONE)
 - **API URL fallback leakage resolved:** Removed hardcoded `127.0.0.1:8000` from the frontend production bundle. Replaced with empty default relative routes, and configured a local `frontend/.env` file with `VITE_API_BASE_URL` for local development. (DONE)
+
+## Step 32 — Simplify Frontend & Legal Risk Mitigation (DONE)
+- **Minimal Login & Signup UX:** Removed Google OAuth login options, whitelisting modals, and split layouts in the authentication views (both `LandingPage.tsx` and `AuthModal.tsx`). The landing page now displays a single, centered, elegant credentials auth card. (DONE)
+- **Hidden Architecture Diagrams:** Completely hid the "Live Pipeline Architecture" interactive simulator, removing all visual traces of search pipelines and scraper flows. (DONE)
+- **Rephrase Web Scraping references:** Changed all legally-sensitive terms such as "Multi-Source Lead Scraping", "scrapers", and "rotating user-agents" on the landing page and inner dashboard views (`ScraperView`, `DashboardView`, etc.) to client-friendly terms like "Lead Discovery & Enrichment Hub", "Lead Queue", "LinkedIn Connection System", and "Import & Validate Leads". (DONE)
 - **Destructive changes user confirmation:** Added user confirmation double-checks (`window.confirm`) to all destructive `DELETE` call hooks across all view components (resumes, experiences, projects, achievements, templates, contacts). (DONE)

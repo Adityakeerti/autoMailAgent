@@ -187,7 +187,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onLoadingChange }) =
               </span>
             </div>
             <p style={{ fontSize: '13px', color: 'var(--on-surface-variant)', marginBottom: '12px' }}>
-              AutoMail includes a system-level connector for identifying matching roles and positions. Optionally override below with a custom `li_at` account cookie.
+              GetNewJob AI includes a system-level connector for identifying matching roles and positions. Optionally override below with a custom `li_at` account cookie.
             </p>
             <div className="form-group">
               <label className="form-label">Custom Connection Cookie Override (Optional) {st.has_linkedin_cookie ? '(Saved)' : ''}</label>

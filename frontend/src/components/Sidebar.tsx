@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Search, Users, FileCode, Settings, LogOut, Zap } from 'lucide-react';
+import { LayoutDashboard, FileText, Search, Users, FileCode, Settings, LogOut, Briefcase } from 'lucide-react';
 import { removeToken, api } from '../api';
 
 interface SidebarProps {
@@ -31,8 +31,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userE
   return (
     <aside className="sidebar">
       <div className="sidebar-logo">
-        <Zap size={22} color="var(--primary)" />
-        <h2>AutoMail</h2>
+        <Briefcase size={22} color="var(--primary)" />
+        <h2>GetNewJob AI</h2>
       </div>
 
       <nav className="nav-group">
