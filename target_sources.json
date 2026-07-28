@@ -1,0 +1,36 @@
+{
+  "companies": [
+    {
+      "name": "Stripe",
+      "domain": "stripe.com",
+      "career_page": "https://stripe.com/jobs",
+      "github_org": "stripe",
+      "lever_slug": "",
+      "greenhouse_slug": "stripe"
+    },
+    {
+      "name": "Figma",
+      "domain": "figma.com",
+      "career_page": "https://figma.com/careers",
+      "github_org": "figma",
+      "lever_slug": "figma",
+      "greenhouse_slug": ""
+    },
+    {
+      "name": "Palantir",
+      "domain": "palantir.com",
+      "career_page": "https://palantir.com/careers",
+      "github_org": "palantir",
+      "lever_slug": "palantir",
+      "greenhouse_slug": ""
+    },
+    {
+      "name": "Vercel",
+      "domain": "vercel.com",
+      "career_page": "https://vercel.com/careers",
+      "github_org": "vercel",
+      "lever_slug": "",
+      "greenhouse_slug": "vercel"
+    }
+  ]
+}
