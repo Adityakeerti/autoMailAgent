@@ -43,5 +43,14 @@ async def get_db():
 
 async def init_db():
     import app.models  # Register all models with Base
+    from sqlalchemy import text
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+        try:
+            await conn.execute(text("ALTER TABLE context_profile ADD COLUMN IF NOT EXISTS full_name VARCHAR(255);"))
+        except Exception:
+            try:
+                await conn.execute(text("ALTER TABLE context_profile ADD COLUMN full_name VARCHAR(255);"))
+            except Exception:
+                pass
+
