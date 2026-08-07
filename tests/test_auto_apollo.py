@@ -2,11 +2,15 @@ import asyncio
 import random
 from httpx import AsyncClient, ASGITransport
 from app.main import app
-from app.database import AsyncSessionLocal
+from app.database import engine, Base, AsyncSessionLocal
 from app.models import Contact, ScrapeQueue, Setting
 from app.services.scrapers import normalize_scrape_queue
 
 async def main():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+
     email_suffix = str(random.randint(1000, 9999))
     test_email = f"apollo_test_{email_suffix}@example.com"
     

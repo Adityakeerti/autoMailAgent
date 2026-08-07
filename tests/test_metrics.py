@@ -1,10 +1,13 @@
 import asyncio
 from httpx import AsyncClient, ASGITransport
 from app.main import app
-from app.database import AsyncSessionLocal
+from app.database import engine, Base, AsyncSessionLocal
 from app.models import Contact
 
 async def main():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         # Sign up or login
         res = await client.post("/auth/signup", json={"email": "metrics_test@example.com", "password": "Password123!"})
