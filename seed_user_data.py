@@ -10,6 +10,7 @@ from app.services.default_templates import DEFAULT_TEMPLATES
 SEED_DATA = {
   "profile": {
     "role_title": "Final-year B.Tech CSE (AI/ML) student, Graphic Era Hill University",
+    "full_name": "Aditya Keerti",
     "grad_year": "2027",
     "portfolio_url": "https://adityakeerti.vercel.app",
     "github_url": "https://github.com/Adityakeerti",
@@ -119,6 +120,7 @@ async def seed():
             db.add(cp)
         
         cp.role_title = prof["role_title"]
+        cp.full_name = prof.get("full_name")
         cp.grad_year = str(prof["grad_year"])
         cp.portfolio_url = prof["portfolio_url"]
         cp.github_url = prof["github_url"]

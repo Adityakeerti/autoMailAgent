@@ -771,6 +771,67 @@ class ScraperService:
         except Exception as e:
             return {"error": f"Apollo.io request failed: {str(e)}"}
 
+    async def find_and_enrich_tech_lead(self, company_domain: str) -> Optional[Dict[str, Any]]:
+        """
+        Searches Apollo for a tech leader/engineering manager at the company domain
+        and enriches their email.
+        """
+        if not settings.APOLLO_API_KEY:
+            return None
+
+        titles = [
+            "Tech Lead", "Engineering Manager", "Technical Lead", "CTO", 
+            "Director of Engineering", "VP of Engineering", "Software Engineering Manager", 
+            "Lead Software Engineer", "Staff Software Engineer", "Principal Software Engineer"
+        ]
+        
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                search_url = "https://api.apollo.io/api/v1/mixed_people/api_search"
+                headers = {
+                    "x-api-key": settings.APOLLO_API_KEY, 
+                    "Content-Type": "application/json",
+                    "Cache-Control": "no-cache"
+                }
+                payload = {
+                    "q_organization_domains_list": [company_domain],
+                    "person_titles": titles,
+                    "per_page": 5
+                }
+                
+                logger.info(f"Searching Apollo for tech leads at {company_domain}")
+                resp = await client.post(search_url, headers=headers, json=payload)
+                if resp.status_code != 200:
+                    logger.warning(f"Apollo search failed with status {resp.status_code}: {resp.text}")
+                    return None
+                    
+                data = resp.json()
+                people = data.get("people") or []
+                if not people:
+                    logger.info(f"No tech leads found on Apollo for {company_domain}")
+                    return None
+                
+                for person in people:
+                    first_name = person.get("first_name")
+                    last_name = person.get("last_name")
+                    if first_name and last_name:
+                        logger.info(f"Attempting to enrich Apollo email for {first_name} {last_name} at {company_domain}")
+                        enrich_res = await self.enrich_email_apollo(first_name, last_name, company_domain)
+                        if enrich_res and enrich_res.get("found_emails"):
+                            email = enrich_res["found_emails"][0]
+                            return {
+                                "email": email,
+                                "name": f"{first_name} {last_name}".strip(),
+                                "job_title": person.get("title") or "Tech Lead",
+                                "company": person.get("organization", {}).get("name") or company_domain,
+                                "linkedin_url": person.get("linkedin_url"),
+                                "platform": "apollo"
+                            }
+        except Exception as e:
+            logger.error(f"Failed to find and enrich tech lead at {company_domain}: {e}")
+            
+        return None
+
     async def scrape_hn_hiring(self, search_tokens: List[str], max_comments: int = 50) -> Dict[str, Any]:
         """
         Scrapes the latest HN 'Who is Hiring' thread, parses comments for matching keywords,
@@ -1025,6 +1086,24 @@ async def normalize_scrape_queue(user_id: int, db: AsyncSession) -> int:
             name = lead.get("name") or raw.get("name")
             company_val = lead.get("company") or _company_from_url(lead.get("job_url") or "")
             domain = _sanitize_domain(company_val) if company_val else None
+
+            # Try to search Apollo for a Tech Lead at this company domain and enrich them
+            # if we only have a generic careers/jobs email (or empty email)
+            is_generic_email = not email or email.lower().startswith(("careers@", "jobs@", "info@", "hr@", "recruiting@", "recruitment@", "hello@", "contact@", "team@"))
+            if is_generic_email and domain and settings.APOLLO_API_KEY:
+                try:
+                    tech_lead = await scraper_service.find_and_enrich_tech_lead(domain)
+                    if tech_lead:
+                        email = tech_lead["email"]
+                        name = tech_lead["name"]
+                        lead["email"] = email
+                        lead["name"] = name
+                        lead["job_title"] = tech_lead["job_title"]
+                        lead["company"] = tech_lead["company"]
+                        if tech_lead.get("linkedin_url"):
+                            lead["linkedin_url"] = tech_lead["linkedin_url"]
+                except Exception as e:
+                    logger.debug(f"Auto Tech Lead discovery failed for {domain}: {e}")
 
             # Run automatic Apollo enrichment for real named contacts with generic/guessed emails
             is_real_name = name and name.lower() not in {"hiring manager", "company", "unknown", "n/a", "na", "recruiter", "team"}

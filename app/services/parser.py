@@ -17,6 +17,7 @@ You are an expert HR & resume parser. Your task is to extract complete, high-dep
 {
   "profile": {
     "role_title": "string or null",
+    "full_name": "string or null",
     "grad_year": "string or null",
     "portfolio_url": "string or null",
     "github_url": "string or null",
@@ -119,6 +120,7 @@ async def parse_and_populate_resume(resume_id: int, db: AsyncSession, mode: str 
             db.add(cp)
         
         if prof_data.get("role_title"): cp.role_title = prof_data.get("role_title")
+        if prof_data.get("full_name"): cp.full_name = prof_data.get("full_name")
         if prof_data.get("grad_year"): cp.grad_year = str(prof_data.get("grad_year"))
         if prof_data.get("portfolio_url"): cp.portfolio_url = prof_data.get("portfolio_url")
         if prof_data.get("github_url"): cp.github_url = prof_data.get("github_url")

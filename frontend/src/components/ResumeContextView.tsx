@@ -512,7 +512,33 @@ export const ResumeContextView: React.FC<ResumeContextViewProps> = ({ onLoadingC
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px' }}>
+              {/* Full Name — full-width, prominent, with warning if empty */}
+              <div className="form-group" style={{ marginTop: '14px' }}>
+                <label className="form-label" style={{ fontSize: '13px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  Full Name
+                  {!profile.full_name && (
+                    <span style={{ fontSize: '11px', fontWeight: 500, color: '#f97316', background: 'rgba(249,115,22,0.12)', border: '1px solid rgba(249,115,22,0.3)', borderRadius: '4px', padding: '1px 6px' }}>
+                      ⚠ Required — used in all email sign-offs
+                    </span>
+                  )}
+                </label>
+                <input
+                  type="text"
+                  className="form-input"
+                  value={profile.full_name || ''}
+                  onChange={(e) => setProfile({ ...profile, full_name: e.target.value })}
+                  placeholder="e.g. Aditya Keerti"
+                  style={!profile.full_name ? { borderColor: 'rgba(249,115,22,0.6)', boxShadow: '0 0 0 2px rgba(249,115,22,0.12)' } : {}}
+                />
+                {!profile.full_name && (
+                  <p style={{ fontSize: '11px', color: '#f97316', marginTop: '4px', opacity: 0.9 }}>
+                    Without a Full Name, emails will show your Gmail prefix instead of your real name.
+                  </p>
+                )}
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '14px', marginTop: '4px' }}>
+                <div style={{ display: 'none' }}>{/* Full Name moved above */}</div>
                 {profile.is_fresher === false || (profile.is_fresher === undefined && Boolean(profile.role_title && profile.role_title.trim() !== '')) ? (
                   <div className="form-group">
                     <label className="form-label" style={{ fontSize: '12px', fontWeight: 600 }}>Current Job Title</label>

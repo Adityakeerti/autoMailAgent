@@ -121,10 +121,12 @@ async def test_step5_context_crud(client: AsyncClient, token_a: str):
     # Update Profile
     prof_res = await client.put("/context/profile", headers=headers_a, json={
         "role_title": "Full Stack Engineer",
+        "full_name": "Alex Mercer",
         "portfolio_url": "https://alexmercer.dev",
         "github_url": "https://github.com/alexmercer"
     })
     assert prof_res.status_code == 200
+    assert prof_res.json()["full_name"] == "Alex Mercer"
     assert prof_res.json()["role_title"] == "Full Stack Engineer"
 
     # Add Experience
@@ -269,11 +271,17 @@ async def test_step13_14_15_16_scheduler_smtp_approval(client: AsyncClient, toke
     assert appr_res.json()["status"] == "queued"
 
     # Test SMTP Send
-    async with AsyncSessionLocal() as db:
-        c = await db.get(Contact, contact_id)
-        sent = await send_contact_email_via_smtp(c, db)
-        assert sent is True
-        assert c.status == "sent"
+    from unittest.mock import patch, MagicMock
+    with patch("smtplib.SMTP") as mock_smtp, patch("smtplib.SMTP_SSL") as mock_smtp_ssl:
+        mock_instance = MagicMock()
+        mock_smtp.return_value = mock_instance
+        mock_smtp_ssl.return_value = mock_instance
+        
+        async with AsyncSessionLocal() as db:
+            c = await db.get(Contact, contact_id)
+            sent = await send_contact_email_via_smtp(c, db)
+            assert sent is True
+            assert c.status == "sent"
 
     print("[SUCCESS] Steps 13-16: Queue approval and SMTP send completed.")
 

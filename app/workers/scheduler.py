@@ -45,6 +45,23 @@ async def process_user_queue(user_id: int):
             logger.info(f"User {user_id} is in 'review' mode. Queued contacts will not send automatically.")
             return
 
+        # If send_mode is auto, automatically personalize new/generic_new contacts
+        if st.send_mode == "auto":
+            res_new = await db.execute(
+                select(Contact).where(
+                    Contact.user_id == user_id,
+                    Contact.status.in_(["new", "generic_new"])
+                ).order_by(Contact.id.asc()).limit(5)
+            )
+            new_contacts = res_new.scalars().all()
+            for nc in new_contacts:
+                try:
+                    from app.services.renderer import render_contact_email
+                    logger.info(f"Auto-personalizing contact {nc.id} for user {user_id}")
+                    await render_contact_email(nc.id, None, db)
+                except Exception as e:
+                    logger.error(f"Auto-personalization failed for contact {nc.id}: {e}")
+
         # Rate limiter check: count sends in current hour
         one_hour_ago = datetime.datetime.utcnow() - datetime.timedelta(hours=1)
         res_count = await db.execute(

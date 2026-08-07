@@ -13,6 +13,7 @@ router = APIRouter(prefix="/context", tags=["Context Layer"])
 # --- Schemas ---
 class ProfileSchema(BaseModel):
     role_title: Optional[str] = None
+    full_name: Optional[str] = None
     grad_year: Optional[str] = None
     portfolio_url: Optional[str] = None
     github_url: Optional[str] = None
@@ -59,6 +60,7 @@ async def get_profile(current_user: User = Depends(get_current_user), db: AsyncS
         return ProfileSchema()
     return ProfileSchema(
         role_title=cp.role_title,
+        full_name=cp.full_name,
         grad_year=cp.grad_year,
         portfolio_url=cp.portfolio_url,
         github_url=cp.github_url,
@@ -74,6 +76,7 @@ async def update_profile(data: ProfileSchema, current_user: User = Depends(get_c
         db.add(cp)
 
     if data.role_title is not None: cp.role_title = data.role_title
+    if data.full_name is not None: cp.full_name = data.full_name
     if data.grad_year is not None: cp.grad_year = data.grad_year
     if data.portfolio_url is not None: cp.portfolio_url = data.portfolio_url
     if data.github_url is not None: cp.github_url = data.github_url
@@ -83,6 +86,7 @@ async def update_profile(data: ProfileSchema, current_user: User = Depends(get_c
     await db.refresh(cp)
     return ProfileSchema(
         role_title=cp.role_title,
+        full_name=cp.full_name,
         grad_year=cp.grad_year,
         portfolio_url=cp.portfolio_url,
         github_url=cp.github_url,

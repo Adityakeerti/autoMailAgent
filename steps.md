@@ -241,4 +241,21 @@ Follow in order. Do not skip ahead — each step depends on the one before it. D
 - **Force Google Account Chooser:** Changed the Google OAuth `prompt` parameter from `"consent"` to `"select_account consent"` to ensure users can choose which Google account to login with. (DONE)
 
 ## Step 34 — Always Open Whitelist Request with Gmail (DONE)
-- **Gmail Redirect Link:** Modified the "Request via Email" link in `LandingPage.tsx` to redirect the user to Gmail's web compose interface (`https://mail.google.com/mail/?view=cm&fs=1&to=...`) in a new tab, instead of a standard `mailto:` link. (DONE)
+- Gmail Redirect Link: Modified the "Request via Email" link in `LandingPage.tsx` to redirect the user to Gmail's web compose interface (`https://mail.google.com/mail/?view=cm&fs=1&to=...`) in a new tab, instead of a standard `mailto:` link. (DONE)
+
+## Step 35 — Smart Tech Lead Apollo Enrichment & Role-Aware Template Selection (DONE)
+- Implemented Apollo people search (`find_and_enrich_tech_lead`) for tech leads at discovered domains in `scrapers.py`.
+- Auto-enrich generic company leads with tech leads' names, roles, and verified emails in `normalize_scrape_queue`. Falls back gracefully when Apollo API is unavailable.
+- Rewrote dynamic template selection in `renderer.py` based on hiring status (`job_posting_url`) and recipient role (tech leader → Referral Ask / Direct Pitch; HR → Cold Apply / Recruiter Outreach; generic → Generic Company Outreach).
+- Fixed `MultipleResultsFound` error in template queries — switched to `.scalars().first()` throughout.
+- Fixed renderer eager-loading `Contact.user` via `selectinload` to prevent greenlet async errors.
+- Added auto-personalization of `new`/`generic_new` leads in `scheduler.py` when `send_mode` is `auto`.
+- Mocked SMTP in `test_pipeline.py` to prevent real SMTP authentication during tests — all tests pass cleanly.
+- Tested: `test_metrics.py` ✅, `test_pipeline.py` ✅.
+
+## Step 36 — User Full Name in Personalized Emails (DONE)
+- Added `full_name` column to `context_profile` table (SQLite migration applied to `automail.db` and `test_automail.db`).
+- Exposed `full_name` in `ProfileSchema` and `GET`/`PUT` `/context/profile` endpoints in `context.py`.
+- Updated `renderer.py` `render_contact_email` to use `prof.full_name` before falling back to the Gmail prefix.
+- Added **Full Name** input field in `ResumeContextView.tsx` Profile section — now rendered as a prominent full-width field with an orange warning badge and hint text when blank.
+- Build verified (`npm run build` 0 errors).
