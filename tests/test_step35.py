@@ -141,8 +141,12 @@ async def main():
             c.body = None
             await db.commit()
             
-            with patch("app.workers.scheduler.send_contact_email_via_smtp") as mock_send:
-                mock_send.return_value = True
+            async def mock_send_impl(contact, db):
+                contact.status = "sent"
+                await db.commit()
+                return True
+
+            with patch("app.workers.scheduler.send_contact_email_via_smtp", side_effect=mock_send_impl):
                 
                 print("Running scheduler process_user_queue...")
                 await process_user_queue(user_id)
