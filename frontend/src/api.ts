@@ -120,7 +120,7 @@ export const api = {
   rejectQueueItem: (id: number) => request<any>(`/queue/${id}/reject`, { method: "POST" }),
   bulkApproveQueueItems: (ids: number[]) => request<any>("/queue/bulk-approve", { method: "POST", body: JSON.stringify({ ids }) }),
   bulkRejectQueueItems: (ids: number[]) => request<any>("/queue/bulk-reject", { method: "POST", body: JSON.stringify({ ids }) }),
-  sendMailNow: (id: number) => request<any>(`/queue/${id}/send`, { method: "POST" }),
+  sendMailNow: (id: number) => request<any>(`/queue/${id}/dispatch`, { method: "POST" }),
 
   // Auth additions
   getMe: () => request<any>("/auth/me"),

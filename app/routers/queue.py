@@ -193,7 +193,7 @@ async def bulk_reject_queue_items(
     await db.commit()
     return {"message": f"Successfully rejected {len(contacts)} contacts"}
 
-@router.post("/{contact_id}/send", response_model=QueueItemResponse)
+@router.post("/{contact_id}/dispatch", response_model=QueueItemResponse)
 async def send_queued_item(
     contact_id: int,
     current_user: User = Depends(get_current_user),
