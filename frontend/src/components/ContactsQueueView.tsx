@@ -15,7 +15,8 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
   const [msg, setMsg] = useState('');
   const [initialLoading, setInitialLoading] = useState(true);
   const [personalizingId, setPersonalizingId] = useState<number | null>(null);
-  const [actionId, setActionId] = useState<number | null>(null);
+  const [approvingId, setApprovingId] = useState<number | null>(null);
+  const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [sendingId, setSendingId] = useState<number | null>(null);
 
   // Row selection states
@@ -90,7 +91,7 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
   };
 
   const handleApprove = async (id: number) => {
-    setActionId(id);
+    setApprovingId(id);
     try {
       await api.approveQueueItem(id);
       setMsg('Contact approved and queued for send!');
@@ -98,12 +99,12 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
     } catch (err: any) {
       setMsg('Approval error: ' + err.message);
     } finally {
-      setActionId(null);
+      setApprovingId(null);
     }
   };
 
   const handleReject = async (id: number) => {
-    setActionId(id);
+    setRejectingId(id);
     try {
       await api.rejectQueueItem(id);
       setMsg('Contact rejected.');
@@ -111,7 +112,7 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
     } catch (err: any) {
       setMsg('Reject error: ' + err.message);
     } finally {
-      setActionId(null);
+      setRejectingId(null);
     }
   };
 
@@ -356,25 +357,29 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
                           </button>
                         )}
                         {item.status === 'personalized' && (
-                          <button className="btn btn-primary btn-sm" onClick={() => handleApprove(item.id)} disabled={actionId === item.id || sendingId === item.id}>
-                            {actionId === item.id ? (
+                          <button className="btn btn-primary btn-sm" onClick={() => handleApprove(item.id)} disabled={approvingId === item.id || rejectingId === item.id || sendingId === item.id}>
+                            {approvingId === item.id ? (
                               <><Loader2 size={14} className="spin-icon" /> Approving...</>
                             ) : (
                               <><Check size={14} /> Approve</>
                             )}
                           </button>
                         )}
-                        <button className="btn btn-success btn-sm" onClick={() => handleSendNow(item.id)} disabled={sendingId === item.id || actionId === item.id}>
+                        <button className="btn btn-success btn-sm" onClick={() => handleSendNow(item.id)} disabled={sendingId === item.id || approvingId === item.id || rejectingId === item.id}>
                           {sendingId === item.id ? (
                             <><Loader2 size={14} className="spin-icon" /> Sending...</>
                           ) : (
                             <><Send size={12} /> Send Now</>
                           )}
                         </button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => handleReject(item.id)} disabled={actionId === item.id || sendingId === item.id} title="Reject and remove from queue">
-                          <X size={14} color="var(--error)" />
+                        <button className="btn btn-secondary btn-sm" onClick={() => handleReject(item.id)} disabled={approvingId === item.id || rejectingId === item.id || sendingId === item.id} title="Reject and remove from queue">
+                          {rejectingId === item.id ? (
+                            <><Loader2 size={14} className="spin-icon" /> Rejecting...</>
+                          ) : (
+                            <X size={14} color="var(--error)" />
+                          )}
                         </button>
-                        <button className="btn btn-secondary btn-sm" onClick={async () => { if (window.confirm("Are you sure you want to delete this contact entirely?")) { await api.deleteContact(item.id); loadData(); } }} disabled={actionId === item.id || sendingId === item.id} title="Delete contact completely">
+                        <button className="btn btn-secondary btn-sm" onClick={async () => { if (window.confirm("Are you sure you want to delete this contact entirely?")) { await api.deleteContact(item.id); loadData(); } }} disabled={approvingId === item.id || rejectingId === item.id || sendingId === item.id} title="Delete contact completely">
                           <Trash2 size={14} color="var(--error)" />
                         </button>
                       </div>
@@ -484,25 +489,29 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
                           </button>
                         )}
                         {item.status === 'generic_new' && (
-                          <button className="btn btn-primary btn-sm" onClick={() => handleApprove(item.id)} disabled={actionId === item.id || sendingId === item.id}>
-                            {actionId === item.id ? (
+                          <button className="btn btn-primary btn-sm" onClick={() => handleApprove(item.id)} disabled={approvingId === item.id || rejectingId === item.id || sendingId === item.id}>
+                            {approvingId === item.id ? (
                               <><Loader2 size={14} className="spin-icon" /> Approving...</>
                             ) : (
                               <><Check size={14} /> Approve</>
                             )}
                           </button>
                         )}
-                        <button className="btn btn-success btn-sm" onClick={() => handleSendNow(item.id)} disabled={sendingId === item.id || actionId === item.id}>
+                        <button className="btn btn-success btn-sm" onClick={() => handleSendNow(item.id)} disabled={sendingId === item.id || approvingId === item.id || rejectingId === item.id}>
                           {sendingId === item.id ? (
                             <><Loader2 size={14} className="spin-icon" /> Sending...</>
                           ) : (
                             <><Send size={12} /> Send Now</>
                           )}
                         </button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => handleReject(item.id)} disabled={actionId === item.id || sendingId === item.id} title="Reject and remove from queue">
-                          <X size={14} color="var(--error)" />
+                        <button className="btn btn-secondary btn-sm" onClick={() => handleReject(item.id)} disabled={approvingId === item.id || rejectingId === item.id || sendingId === item.id} title="Reject and remove from queue">
+                          {rejectingId === item.id ? (
+                            <><Loader2 size={14} className="spin-icon" /> Rejecting...</>
+                          ) : (
+                            <X size={14} color="var(--error)" />
+                          )}
                         </button>
-                        <button className="btn btn-secondary btn-sm" onClick={async () => { if (window.confirm("Are you sure you want to delete this contact entirely?")) { await api.deleteContact(item.id); loadData(); } }} disabled={actionId === item.id || sendingId === item.id} title="Delete contact completely">
+                        <button className="btn btn-secondary btn-sm" onClick={async () => { if (window.confirm("Are you sure you want to delete this contact entirely?")) { await api.deleteContact(item.id); loadData(); } }} disabled={approvingId === item.id || rejectingId === item.id || sendingId === item.id} title="Delete contact completely">
                           <Trash2 size={14} color="var(--error)" />
                         </button>
                       </div>
