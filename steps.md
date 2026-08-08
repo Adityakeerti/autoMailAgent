@@ -259,3 +259,12 @@ Follow in order. Do not skip ahead — each step depends on the one before it. D
 - Updated `renderer.py` `render_contact_email` to use `prof.full_name` before falling back to the Gmail prefix.
 - Added **Full Name** input field in `ResumeContextView.tsx` Profile section — now rendered as a prominent full-width field with an orange warning badge and hint text when blank.
 - Build verified (`npm run build` 0 errors).
+
+## Step 37 — Selection Checkboxes, Bulk Actions & XOAUTH2 Exception Fix (DONE)
+- Fixed XOAUTH2 error handling: SMTP sender now checks response code of `docmd("AUTH", ...)` for XOAUTH2 and correctly raises `SMTPAuthenticationError` on failure (which backend catches and reports as HTTP 400 with details, rather than failing silently inside `send_message`).
+- Safe auto queue send pacing: Excluded `"personalized"` contacts from the scheduler's auto-send queue query. The scheduler now only auto-sends `"queued"` or `"generic_queued"` contacts in `auto` mode, preventing race conditions or auto-sending of contacts that are awaiting review or reject choices.
+- Individual Row Deletions: Added trash can icons directly to rows in the Send Queue Approval and Generic Queue tables so users can delete individual contacts entirely from the database without leaving the queue page.
+- Bulk Queue Selection & Actions: Implemented checkboxes for each row in the Send Queue Approval table, Generic Queue table, and Contacts Directory. Added a bulk action header bar that renders when one or more contacts are selected, allowing users to "Bulk Approve", "Bulk Reject", or "Bulk Delete" selected contacts.
+- Custom CSS rejected chip: Added `.chip-rejected` styling to `index.css` for clean display of rejected contacts.
+- Contacts Directory Rejected Filter: Added a "rejected" status filter button to the Contacts Directory so users can easily view and manage contacts with a "rejected" status.
+- Build verified (`npm run build` and python test runner both completed with 0 errors).

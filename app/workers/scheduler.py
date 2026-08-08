@@ -78,7 +78,7 @@ async def process_user_queue(user_id: int):
         res_c = await db.execute(
             select(Contact).where(
                 Contact.user_id == user_id,
-                Contact.status.in_(["queued", "personalized", "generic_queued"])
+                Contact.status.in_(["queued", "generic_queued"])
             ).order_by(Contact.id.asc()).limit(1)
         )
         contact = res_c.scalar_one_or_none()

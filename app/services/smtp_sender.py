@@ -109,7 +109,9 @@ async def send_contact_email_via_smtp(contact: Contact, db: AsyncSession) -> boo
 
         if use_xoauth2:
             xoauth2_string = _build_xoauth2_string(smtp_user, access_token)
-            server.docmd("AUTH", f"XOAUTH2 {xoauth2_string}")
+            code, resp = server.docmd("AUTH", f"XOAUTH2 {xoauth2_string}")
+            if code != 235:
+                raise smtplib.SMTPAuthenticationError(code, resp)
         else:
             server.login(smtp_user, smtp_password)
 

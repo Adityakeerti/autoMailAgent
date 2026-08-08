@@ -18,6 +18,11 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
   const [actionId, setActionId] = useState<number | null>(null);
   const [sendingId, setSendingId] = useState<number | null>(null);
 
+  // Row selection states
+  const [selectedQueueIds, setSelectedQueueIds] = useState<number[]>([]);
+  const [selectedGenericQueueIds, setSelectedGenericQueueIds] = useState<number[]>([]);
+  const [selectedContactIds, setSelectedContactIds] = useState<number[]>([]);
+
   // Preview Modal
   const [selectedContact, setSelectedContact] = useState<any | null>(null);
 
@@ -39,6 +44,9 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
       setContacts(cList);
       setQueue(qList);
       setGenericQueue(gList);
+      setSelectedQueueIds([]);
+      setSelectedGenericQueueIds([]);
+      setSelectedContactIds([]);
     } catch (e: any) {
       console.error(e);
     } finally {
@@ -122,6 +130,108 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
     }
   };
 
+  // Bulk Handlers
+  const handleBulkApproveQueue = async () => {
+    if (selectedQueueIds.length === 0) return;
+    onLoadingChange?.(true);
+    try {
+      await api.bulkApproveQueueItems(selectedQueueIds);
+      setMsg(`✅ Bulk approved ${selectedQueueIds.length} contacts!`);
+      await loadData();
+    } catch (err: any) {
+      setMsg('Bulk approval error: ' + err.message);
+    } finally {
+      onLoadingChange?.(false);
+    }
+  };
+
+  const handleBulkRejectQueue = async () => {
+    if (selectedQueueIds.length === 0) return;
+    onLoadingChange?.(true);
+    try {
+      await api.bulkRejectQueueItems(selectedQueueIds);
+      setMsg(`Bulk rejected ${selectedQueueIds.length} contacts.`);
+      await loadData();
+    } catch (err: any) {
+      setMsg('Bulk reject error: ' + err.message);
+    } finally {
+      onLoadingChange?.(false);
+    }
+  };
+
+  const handleBulkDeleteQueue = async () => {
+    if (selectedQueueIds.length === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedQueueIds.length} selected contacts entirely from the database?`)) return;
+    onLoadingChange?.(true);
+    try {
+      await api.bulkDeleteContacts(selectedQueueIds);
+      setMsg(`Bulk deleted ${selectedQueueIds.length} contacts.`);
+      await loadData();
+    } catch (err: any) {
+      setMsg('Bulk delete error: ' + err.message);
+    } finally {
+      onLoadingChange?.(false);
+    }
+  };
+
+  const handleBulkApproveGenericQueue = async () => {
+    if (selectedGenericQueueIds.length === 0) return;
+    onLoadingChange?.(true);
+    try {
+      await api.bulkApproveQueueItems(selectedGenericQueueIds);
+      setMsg(`✅ Bulk approved ${selectedGenericQueueIds.length} generic contacts!`);
+      await loadData();
+    } catch (err: any) {
+      setMsg('Bulk approval error: ' + err.message);
+    } finally {
+      onLoadingChange?.(false);
+    }
+  };
+
+  const handleBulkRejectGenericQueue = async () => {
+    if (selectedGenericQueueIds.length === 0) return;
+    onLoadingChange?.(true);
+    try {
+      await api.bulkRejectQueueItems(selectedGenericQueueIds);
+      setMsg(`Bulk rejected ${selectedGenericQueueIds.length} generic contacts.`);
+      await loadData();
+    } catch (err: any) {
+      setMsg('Bulk reject error: ' + err.message);
+    } finally {
+      onLoadingChange?.(false);
+    }
+  };
+
+  const handleBulkDeleteGenericQueue = async () => {
+    if (selectedGenericQueueIds.length === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedGenericQueueIds.length} selected generic contacts entirely from the database?`)) return;
+    onLoadingChange?.(true);
+    try {
+      await api.bulkDeleteContacts(selectedGenericQueueIds);
+      setMsg(`Bulk deleted ${selectedGenericQueueIds.length} generic contacts.`);
+      await loadData();
+    } catch (err: any) {
+      setMsg('Bulk delete error: ' + err.message);
+    } finally {
+      onLoadingChange?.(false);
+    }
+  };
+
+  const handleBulkDeleteContacts = async () => {
+    if (selectedContactIds.length === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedContactIds.length} selected contacts entirely from the database?`)) return;
+    onLoadingChange?.(true);
+    try {
+      await api.bulkDeleteContacts(selectedContactIds);
+      setMsg(`Bulk deleted ${selectedContactIds.length} contacts.`);
+      await loadData();
+    } catch (err: any) {
+      setMsg('Bulk delete error: ' + err.message);
+    } finally {
+      onLoadingChange?.(false);
+    }
+  };
+
   const filteredContacts = statusFilter === 'all'
     ? contacts
     : contacts.filter((c) => c.status === statusFilter);
@@ -142,10 +252,21 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
 
       {/* Approval Queue Section */}
       <div className="card">
-        <div className="card-header">
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Sparkles size={18} color="var(--primary)" /> Send Queue Approval ({queue.length})
           </h3>
+        </div>
+
+        <div style={{ padding: '0 16px' }}>
+          {selectedQueueIds.length > 0 && (
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '12px 16px', background: 'var(--surface-container-high)', borderRadius: '6px', marginBottom: '12px', marginTop: '12px' }}>
+              <span style={{ fontSize: '14px', fontWeight: 600 }}>{selectedQueueIds.length} items selected:</span>
+              <button className="btn btn-primary btn-sm" onClick={handleBulkApproveQueue}>Approve Selected</button>
+              <button className="btn btn-secondary btn-sm" onClick={handleBulkRejectQueue}>Reject Selected</button>
+              <button className="btn btn-danger btn-sm" style={{ backgroundColor: 'var(--error)', color: 'white', borderColor: 'var(--error)' }} onClick={handleBulkDeleteQueue}>Delete Selected</button>
+            </div>
+          )}
         </div>
 
         {initialLoading ? (
@@ -159,6 +280,19 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
             <table className="table">
               <thead>
                 <tr>
+                  <th style={{ width: '40px' }}>
+                    <input
+                      type="checkbox"
+                      checked={queue.length > 0 && selectedQueueIds.length === queue.length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedQueueIds(queue.map(q => q.id));
+                        } else {
+                          setSelectedQueueIds([]);
+                        }
+                      }}
+                    />
+                  </th>
                   <th>Contact</th>
                   <th>Company & Role</th>
                   <th>JD</th>
@@ -170,6 +304,19 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
               <tbody>
                 {queue.map((item) => (
                   <tr key={item.id}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={selectedQueueIds.includes(item.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedQueueIds([...selectedQueueIds, item.id]);
+                          } else {
+                            setSelectedQueueIds(selectedQueueIds.filter(id => id !== item.id));
+                          }
+                        }}
+                      />
+                    </td>
                     <td>
                       <div style={{ fontWeight: 600 }}>{item.name || 'Hiring Manager'}</div>
                       <div style={{ fontSize: '12px', color: 'var(--outline)' }}>{item.email}</div>
@@ -224,8 +371,11 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
                             <><Send size={12} /> Send Now</>
                           )}
                         </button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => handleReject(item.id)} disabled={actionId === item.id || sendingId === item.id}>
+                        <button className="btn btn-secondary btn-sm" onClick={() => handleReject(item.id)} disabled={actionId === item.id || sendingId === item.id} title="Reject and remove from queue">
                           <X size={14} color="var(--error)" />
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={async () => { if (window.confirm("Are you sure you want to delete this contact entirely?")) { await api.deleteContact(item.id); loadData(); } }} disabled={actionId === item.id || sendingId === item.id} title="Delete contact completely">
+                          <Trash2 size={14} color="var(--error)" />
                         </button>
                       </div>
                     </td>
@@ -239,10 +389,21 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
 
       {/* Unverified / Generic Queue Section */}
       <div className="card" style={{ marginTop: '24px' }}>
-        <div className="card-header">
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Sparkles size={18} color="#d97706" /> Unverified / Generic Queue Approval ({genericQueue.length})
           </h3>
+        </div>
+
+        <div style={{ padding: '0 16px' }}>
+          {selectedGenericQueueIds.length > 0 && (
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '12px 16px', background: 'var(--surface-container-high)', borderRadius: '6px', marginBottom: '12px', marginTop: '12px' }}>
+              <span style={{ fontSize: '14px', fontWeight: 600 }}>{selectedGenericQueueIds.length} items selected:</span>
+              <button className="btn btn-primary btn-sm" onClick={handleBulkApproveGenericQueue}>Approve Selected</button>
+              <button className="btn btn-secondary btn-sm" onClick={handleBulkRejectGenericQueue}>Reject Selected</button>
+              <button className="btn btn-danger btn-sm" style={{ backgroundColor: 'var(--error)', color: 'white', borderColor: 'var(--error)' }} onClick={handleBulkDeleteGenericQueue}>Delete Selected</button>
+            </div>
+          )}
         </div>
 
         {initialLoading ? (
@@ -256,6 +417,19 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
             <table className="table">
               <thead>
                 <tr>
+                  <th style={{ width: '40px' }}>
+                    <input
+                      type="checkbox"
+                      checked={genericQueue.length > 0 && selectedGenericQueueIds.length === genericQueue.length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedGenericQueueIds(genericQueue.map(q => q.id));
+                        } else {
+                          setSelectedGenericQueueIds([]);
+                        }
+                      }}
+                    />
+                  </th>
                   <th>Contact (Guessed)</th>
                   <th>Company &amp; Role</th>
                   <th>JD</th>
@@ -267,6 +441,19 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
               <tbody>
                 {genericQueue.map((item) => (
                   <tr key={item.id}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={selectedGenericQueueIds.includes(item.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedGenericQueueIds([...selectedGenericQueueIds, item.id]);
+                          } else {
+                            setSelectedGenericQueueIds(selectedGenericQueueIds.filter(id => id !== item.id));
+                          }
+                        }}
+                      />
+                    </td>
                     <td>
                       <div style={{ fontWeight: 600 }}>{item.name || 'Hiring Manager'}</div>
                       <div style={{ fontSize: '12px', color: 'var(--outline)' }}>{item.email}</div>
@@ -312,8 +499,11 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
                             <><Send size={12} /> Send Now</>
                           )}
                         </button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => handleReject(item.id)} disabled={actionId === item.id || sendingId === item.id}>
+                        <button className="btn btn-secondary btn-sm" onClick={() => handleReject(item.id)} disabled={actionId === item.id || sendingId === item.id} title="Reject and remove from queue">
                           <X size={14} color="var(--error)" />
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={async () => { if (window.confirm("Are you sure you want to delete this contact entirely?")) { await api.deleteContact(item.id); loadData(); } }} disabled={actionId === item.id || sendingId === item.id} title="Delete contact completely">
+                          <Trash2 size={14} color="var(--error)" />
                         </button>
                       </div>
                     </td>
@@ -327,10 +517,10 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
 
       {/* Contacts Store Table */}
       <div className="card">
-        <div className="card-header">
+        <div className="card-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
           <h3 className="card-title">Contacts Directory ({contacts.length})</h3>
-          <div style={{ display: 'flex', gap: '6px' }}>
-            {['all', 'new', 'personalized', 'queued', 'sent', 'replied', 'bounced'].map((st) => (
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+            {['all', 'new', 'personalized', 'queued', 'sent', 'replied', 'bounced', 'rejected'].map((st) => (
               <button
                 key={st}
                 className={`btn btn-sm ${statusFilter === st ? 'btn-primary' : 'btn-secondary'}`}
@@ -342,6 +532,15 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
           </div>
         </div>
 
+        <div style={{ padding: '0 16px' }}>
+          {selectedContactIds.length > 0 && (
+            <div style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '12px 16px', background: 'var(--surface-container-high)', borderRadius: '6px', marginBottom: '12px', marginTop: '12px' }}>
+              <span style={{ fontSize: '14px', fontWeight: 600 }}>{selectedContactIds.length} contacts selected:</span>
+              <button className="btn btn-danger btn-sm" style={{ backgroundColor: 'var(--error)', color: 'white', borderColor: 'var(--error)' }} onClick={handleBulkDeleteContacts}>Delete Selected Contacts</button>
+            </div>
+          )}
+        </div>
+
         {initialLoading ? (
           <SkeletonTable rows={5} columns={6} />
         ) : (
@@ -349,6 +548,19 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
             <table className="table">
               <thead>
                 <tr>
+                  <th style={{ width: '40px' }}>
+                    <input
+                      type="checkbox"
+                      checked={filteredContacts.length > 0 && selectedContactIds.length === filteredContacts.length}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedContactIds(filteredContacts.map(c => c.id));
+                        } else {
+                          setSelectedContactIds([]);
+                        }
+                      }}
+                    />
+                  </th>
                   <th>Recipient</th>
                   <th>Company</th>
                   <th>Role</th>
@@ -361,6 +573,19 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
               <tbody>
                 {filteredContacts.map((c) => (
                   <tr key={c.id}>
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={selectedContactIds.includes(c.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setSelectedContactIds([...selectedContactIds, c.id]);
+                          } else {
+                            setSelectedContactIds(selectedContactIds.filter(id => id !== c.id));
+                          }
+                        }}
+                      />
+                    </td>
                     <td>
                       <div style={{ fontWeight: 600 }}>{c.name || 'Hiring Manager'}</div>
                       <div style={{ fontSize: '12px', color: 'var(--outline)' }}>{c.email}</div>

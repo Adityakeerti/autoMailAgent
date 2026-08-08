@@ -168,7 +168,9 @@ async def signup(user_data: UserSignup, response: Response, db: AsyncSession = D
     await db.commit()
     await db.refresh(new_user)
 
-    db.add(Setting(user_id=new_user.id))
+    st_exist = await db.execute(select(Setting).where(Setting.user_id == new_user.id))
+    if not st_exist.scalar_one_or_none():
+        db.add(Setting(user_id=new_user.id))
 
     for tmpl in DEFAULT_TEMPLATES:
         db.add(Template(

@@ -188,3 +188,23 @@ async def delete_contact(contact_id: int, current_user: User = Depends(get_curre
         raise HTTPException(status_code=404, detail="Contact not found")
     await db.delete(c)
     await db.commit()
+
+class BulkDeleteRequest(BaseModel):
+    ids: List[int]
+
+@router.post("/bulk-delete")
+async def bulk_delete_contacts(
+    data: BulkDeleteRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    res = await db.execute(
+        select(Contact).where(Contact.id.in_(data.ids), Contact.user_id == current_user.id)
+    )
+    contacts = res.scalars().all()
+    
+    for c in contacts:
+        await db.delete(c)
+        
+    await db.commit()
+    return {"message": f"Successfully deleted {len(contacts)} contacts"}

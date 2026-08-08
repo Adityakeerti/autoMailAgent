@@ -153,6 +153,46 @@ async def reject_queued_item(
     await db.commit()
     return {"message": f"Contact {contact_id} rejected and removed from send queue"}
 
+class BulkActionRequest(BaseModel):
+    ids: List[int]
+
+@router.post("/bulk-approve")
+async def bulk_approve_queue_items(
+    data: BulkActionRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    res = await db.execute(
+        select(Contact).where(Contact.id.in_(data.ids), Contact.user_id == current_user.id)
+    )
+    contacts = res.scalars().all()
+    
+    for c in contacts:
+        status_before = c.status
+        if not c.subject or not c.body:
+            c = await render_contact_email(c.id, None, db)
+        c.status = "generic_queued" if (status_before == "generic_new" or c.status == "generic_queued") else "queued"
+    
+    await db.commit()
+    return {"message": f"Successfully approved {len(contacts)} contacts"}
+
+@router.post("/bulk-reject")
+async def bulk_reject_queue_items(
+    data: BulkActionRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    res = await db.execute(
+        select(Contact).where(Contact.id.in_(data.ids), Contact.user_id == current_user.id)
+    )
+    contacts = res.scalars().all()
+    
+    for c in contacts:
+        c.status = "rejected"
+        
+    await db.commit()
+    return {"message": f"Successfully rejected {len(contacts)} contacts"}
+
 @router.post("/{contact_id}/send", response_model=QueueItemResponse)
 async def send_queued_item(
     contact_id: int,

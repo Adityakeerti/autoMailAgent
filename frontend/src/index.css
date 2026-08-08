@@ -316,6 +316,12 @@ h1, h2, h3, h4, h5, h6 {
   border-color: #fecaca;
 }
 
+.chip-rejected {
+  background-color: #f3f4f6;
+  color: #374151;
+  border-color: #d1d5db;
+}
+
 /* Form inputs */
 .form-group {
   margin-bottom: 16px;

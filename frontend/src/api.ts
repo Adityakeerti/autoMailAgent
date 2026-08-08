@@ -100,7 +100,8 @@ export const api = {
   createContact: (data: any) => request<any>("/contacts", { method: "POST", body: JSON.stringify(data) }),
   updateContactStatus: (id: number, status: string) => request<any>(`/contacts/${id}/status`, { method: "PUT", body: JSON.stringify({ status }) }),
   deleteContact: (id: number) => request<any>(`/contacts/${id}`, { method: "DELETE" }),
-
+  bulkDeleteContacts: (ids: number[]) => request<any>("/contacts/bulk-delete", { method: "POST", body: JSON.stringify({ ids }) }),
+ 
   // Scrapers
   scrapeCareerPage: (url: string) => request<any>("/scrapers/career-page", { method: "POST", body: JSON.stringify({ url }) }),
   scrapeGithub: (username_or_repo: string) => request<any>("/scrapers/github", { method: "POST", body: JSON.stringify({ username_or_repo }) }),
@@ -110,13 +111,15 @@ export const api = {
   enrichApollo: (first_name: string, last_name: string, company_domain: string) => request<any>("/scrapers/enrich/apollo", { method: "POST", body: JSON.stringify({ first_name, last_name, company_domain }) }),
   listScrapeQueue: () => request<any[]>("/scrapers/queue"),
   runNormalizer: () => request<any>("/scrapers/normalize", { method: "POST" }),
-
+ 
   // Send Queue & Approval
   listQueue: () => request<any[]>("/queue"),
   listGenericQueue: () => request<any[]>("/queue/generic"),
   personalizeContact: (id: number, template_id?: number) => request<any>(`/queue/${id}/personalize${template_id ? `?template_id=${template_id}` : ""}`, { method: "POST" }),
   approveQueueItem: (id: number) => request<any>(`/queue/${id}/approve`, { method: "POST" }),
   rejectQueueItem: (id: number) => request<any>(`/queue/${id}/reject`, { method: "POST" }),
+  bulkApproveQueueItems: (ids: number[]) => request<any>("/queue/bulk-approve", { method: "POST", body: JSON.stringify({ ids }) }),
+  bulkRejectQueueItems: (ids: number[]) => request<any>("/queue/bulk-reject", { method: "POST", body: JSON.stringify({ ids }) }),
   sendMailNow: (id: number) => request<any>(`/queue/${id}/send`, { method: "POST" }),
 
   // Auth additions
