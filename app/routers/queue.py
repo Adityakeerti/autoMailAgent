@@ -193,6 +193,54 @@ async def bulk_reject_queue_items(
     await db.commit()
     return {"message": f"Successfully rejected {len(contacts)} contacts"}
 
+@router.post("/bulk-restore")
+async def bulk_restore_queue_items(
+    data: BulkActionRequest,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    res = await db.execute(
+        select(Contact).where(Contact.id.in_(data.ids), Contact.user_id == current_user.id)
+    )
+    contacts = res.scalars().all()
+    
+    for c in contacts:
+        is_generic = False
+        if c.email:
+            email_lower = c.email.lower()
+            if email_lower.startswith(("careers@", "jobs@", "info@", "hr@", "recruiting@", "recruitment@", "hello@", "contact@", "team@")):
+                is_generic = True
+        c.status = "generic_new" if is_generic else "new"
+        c.subject = None
+        c.body = None
+        
+    await db.commit()
+    return {"message": f"Successfully restored {len(contacts)} contacts to new status"}
+
+@router.post("/{contact_id}/restore")
+async def restore_queued_item(
+    contact_id: int,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    res = await db.execute(select(Contact).where(Contact.id == contact_id, Contact.user_id == current_user.id))
+    c = res.scalar_one_or_none()
+    if not c:
+        raise HTTPException(status_code=404, detail="Contact not found")
+
+    is_generic = False
+    if c.email:
+        email_lower = c.email.lower()
+        if email_lower.startswith(("careers@", "jobs@", "info@", "hr@", "recruiting@", "recruitment@", "hello@", "contact@", "team@")):
+            is_generic = True
+
+    c.status = "generic_new" if is_generic else "new"
+    c.subject = None
+    c.body = None
+    await db.commit()
+    return {"message": f"Contact {contact_id} restored to new status"}
+
+
 @router.post("/{contact_id}/dispatch", response_model=QueueItemResponse)
 async def send_queued_item(
     contact_id: int,

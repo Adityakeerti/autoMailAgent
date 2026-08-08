@@ -118,8 +118,10 @@ export const api = {
   personalizeContact: (id: number, template_id?: number) => request<any>(`/queue/${id}/personalize${template_id ? `?template_id=${template_id}` : ""}`, { method: "POST" }),
   approveQueueItem: (id: number) => request<any>(`/queue/${id}/approve`, { method: "POST" }),
   rejectQueueItem: (id: number) => request<any>(`/queue/${id}/reject`, { method: "POST" }),
+  restoreQueueItem: (id: number) => request<any>(`/queue/${id}/restore`, { method: "POST" }),
   bulkApproveQueueItems: (ids: number[]) => request<any>("/queue/bulk-approve", { method: "POST", body: JSON.stringify({ ids }) }),
   bulkRejectQueueItems: (ids: number[]) => request<any>("/queue/bulk-reject", { method: "POST", body: JSON.stringify({ ids }) }),
+  bulkRestoreQueueItems: (ids: number[]) => request<any>("/queue/bulk-restore", { method: "POST", body: JSON.stringify({ ids }) }),
   sendMailNow: (id: number) => request<any>(`/queue/${id}/dispatch`, { method: "POST" }),
 
   // Auth additions

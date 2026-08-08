@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Check, X, Sparkles, Eye, Trash2, Loader2, ExternalLink, Send } from 'lucide-react';
+import { Plus, Check, X, Sparkles, Eye, Trash2, Loader2, ExternalLink, Send, RotateCcw } from 'lucide-react';
 import { api } from '../api';
 import { SkeletonTable } from './Skeleton';
 
@@ -228,6 +228,33 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
       await loadData();
     } catch (err: any) {
       setMsg('Bulk delete error: ' + err.message);
+    } finally {
+      onLoadingChange?.(false);
+    }
+  };
+
+  const handleRestore = async (id: number) => {
+    onLoadingChange?.(true);
+    try {
+      await api.restoreQueueItem(id);
+      setMsg('Contact restored to new status. You can now personalize it again.');
+      await loadData();
+    } catch (err: any) {
+      setMsg('Restore error: ' + err.message);
+    } finally {
+      onLoadingChange?.(false);
+    }
+  };
+
+  const handleBulkRestoreContacts = async () => {
+    if (selectedContactIds.length === 0) return;
+    onLoadingChange?.(true);
+    try {
+      await api.bulkRestoreQueueItems(selectedContactIds);
+      setMsg(`✅ Restored ${selectedContactIds.length} contacts. You can now personalize them again.`);
+      await loadData();
+    } catch (err: any) {
+      setMsg('Bulk restore error: ' + err.message);
     } finally {
       onLoadingChange?.(false);
     }
@@ -545,6 +572,7 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
           {selectedContactIds.length > 0 && (
             <div style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '12px 16px', background: 'var(--surface-container-high)', borderRadius: '6px', marginBottom: '12px', marginTop: '12px' }}>
               <span style={{ fontSize: '14px', fontWeight: 600 }}>{selectedContactIds.length} contacts selected:</span>
+              <button className="btn btn-primary btn-sm" onClick={handleBulkRestoreContacts}>Restore Selected (Personalize Again)</button>
               <button className="btn btn-danger btn-sm" style={{ backgroundColor: 'var(--error)', color: 'white', borderColor: 'var(--error)' }} onClick={handleBulkDeleteContacts}>Delete Selected Contacts</button>
             </div>
           )}
@@ -621,11 +649,16 @@ export const ContactsQueueView: React.FC<ContactsQueueViewProps> = ({ onLoadingC
                     <td>
                       <div style={{ display: 'flex', gap: '6px' }}>
                         {c.body && (
-                          <button className="btn btn-secondary btn-sm" onClick={() => setSelectedContact(c)}>
-                            <Eye size={14} />
+                          <button className="btn btn-secondary btn-sm" onClick={() => setSelectedContact(c)} title="Preview generated email">
+                            <Eye size={14} /> Preview
                           </button>
                         )}
-                        <button className="btn btn-secondary btn-sm" onClick={async () => { if (window.confirm("Are you sure you want to delete this contact?")) { await api.deleteContact(c.id); loadData(); } }}>
+                        {['rejected', 'sent', 'bounced'].includes(c.status) && (
+                          <button className="btn btn-secondary btn-sm" onClick={() => handleRestore(c.id)} title="Restore to new status (clear generated email and personalize again)">
+                            <RotateCcw size={14} color="var(--primary)" /> Restore
+                          </button>
+                        )}
+                        <button className="btn btn-secondary btn-sm" onClick={async () => { if (window.confirm("Are you sure you want to delete this contact?")) { await api.deleteContact(c.id); loadData(); } }} title="Delete contact completely">
                           <Trash2 size={14} color="var(--error)" />
                         </button>
                       </div>
