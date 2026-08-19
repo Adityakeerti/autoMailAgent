@@ -1,4 +1,4 @@
-import requests
+import httpx
 import getpass
 import sys
 
@@ -34,10 +34,10 @@ def main():
         
         print(f"\nAttempting to log in to {BASE_URL}...")
         try:
-            resp = requests.post(f"{BASE_URL}/auth/login", json={
+            resp = httpx.post(f"{BASE_URL}/auth/login", json={
                 "email": email,
                 "password": password
-            })
+            }, timeout=15.0)
             if resp.status_code != 200:
                 print(f"[ERROR] Login failed ({resp.status_code}): {resp.text}")
                 sys.exit(1)
@@ -61,7 +61,7 @@ def main():
     # 1. Fetch settings to see what is currently configured
     print("\n1. Fetching current user settings...")
     try:
-        settings_resp = requests.get(f"{BASE_URL}/settings", headers=headers)
+        settings_resp = httpx.get(f"{BASE_URL}/settings", headers=headers, timeout=15.0)
         if settings_resp.status_code == 200:
             st = settings_resp.json()
             print("Settings currently configured on server:")
@@ -94,7 +94,7 @@ def main():
     
     contact_id = None
     try:
-        contact_resp = requests.post(f"{BASE_URL}/contacts", headers=headers, json=contact_payload)
+        contact_resp = httpx.post(f"{BASE_URL}/contacts", headers=headers, json=contact_payload, timeout=15.0)
         if contact_resp.status_code == 201:
             contact_data = contact_resp.json()
             contact_id = contact_data["id"]
@@ -109,7 +109,7 @@ def main():
     # 3. Personalize email template
     print(f"\n3. Personalizing email for contact ID {contact_id}...")
     try:
-        pers_resp = requests.post(f"{BASE_URL}/queue/{contact_id}/personalize", headers=headers)
+        pers_resp = httpx.post(f"{BASE_URL}/queue/{contact_id}/personalize", headers=headers, timeout=15.0)
         if pers_resp.status_code == 200:
             pers_data = pers_resp.json()
             print("[SUCCESS] Email personalized!")
@@ -126,7 +126,7 @@ def main():
     # 4. Dispatch email immediately
     print(f"\n4. Triggering immediate dispatch (Send Now) for contact ID {contact_id}...")
     try:
-        dispatch_resp = requests.post(f"{BASE_URL}/queue/{contact_id}/dispatch", headers=headers)
+        dispatch_resp = httpx.post(f"{BASE_URL}/queue/{contact_id}/dispatch", headers=headers, timeout=15.0)
         if dispatch_resp.status_code == 200:
             print("\n" + "=" * 60)
             print("🎉 SUCCESS! Email sent successfully!")
