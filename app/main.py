@@ -28,9 +28,15 @@ app = FastAPI(
 )
 
 # Enable CORS for Vercel Frontend and Local Development (Handles pre-flight OPTIONS requests)
+allowed_origins = [origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()]
+if settings.FRONTEND_URL:
+    allowed_origins.append(settings.FRONTEND_URL.strip())
+# Add fallback for user's Vercel production deployment
+allowed_origins.append("https://getnewjob-ai.vercel.app")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[origin.strip() for origin in settings.ALLOWED_ORIGINS.split(",") if origin.strip()],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
