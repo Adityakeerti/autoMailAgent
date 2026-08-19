@@ -7,7 +7,7 @@ from contextlib import asynccontextmanager
 
 from app.config import settings
 from app.database import init_db
-from app.routers import health, auth, settings as routers_settings, resume, context, templates, contacts, scrapers, queue
+from app.routers import health, auth, settings as routers_settings, resume, context, templates, contacts, scrapers, queue, jobs
 from app.workers.scheduler import start_scheduler, stop_scheduler
 
 @asynccontextmanager
@@ -46,6 +46,7 @@ app.include_router(templates.router)
 app.include_router(contacts.router)
 app.include_router(scrapers.router)
 app.include_router(queue.router)
+app.include_router(jobs.router)
 
 # Mount Frontend Assets & Serve SPA Index (only when built dist is present — local/mono-repo)
 frontend_dist = os.path.join(os.path.dirname(__file__), "..", "frontend", "dist")

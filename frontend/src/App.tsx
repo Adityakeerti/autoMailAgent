@@ -8,9 +8,12 @@ import { ScraperView } from './components/ScraperView';
 import { ContactsQueueView } from './components/ContactsQueueView';
 import { TemplatesView } from './components/TemplatesView';
 import { SettingsView } from './components/SettingsView';
+import { JobsView } from './components/JobsView';
 import { TopLoadingBar } from './components/Skeleton';
+import { RenderLoadingScreen } from './components/RenderLoadingScreen';
 
 export function App() {
+  const [serverAwake, setServerAwake] = useState<boolean>(false);
   const [authenticated, setAuthenticated] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [pageLoading, setPageLoading] = useState<boolean>(false);
@@ -20,6 +23,15 @@ export function App() {
   const [settings, setSettings] = useState<any>({});
   const [metrics, setMetrics] = useState<any[]>([]);
   const [userEmail, setUserEmail] = useState<string>('');
+
+  const checkServerStatus = async (): Promise<boolean> => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/health`);
+      return res.ok;
+    } catch (e) {
+      return false;
+    }
+  };
 
   // Verify cookie session on mount (also handles ?token= from Google OAuth redirect)
   useEffect(() => {
@@ -43,6 +55,7 @@ export function App() {
         setAuthenticated(false);
       } finally {
         setPageLoading(false);
+        setServerAwake(true);
       }
     };
     verifySession();
@@ -75,6 +88,10 @@ export function App() {
     }
   }, [authenticated, activeTab]);
 
+  if (!serverAwake) {
+    return <RenderLoadingScreen onFinished={() => setServerAwake(true)} checkStatus={checkServerStatus} />;
+  }
+
   if (!authenticated) {
     return <LandingPage onSuccess={() => setAuthenticated(true)} />;
   }
@@ -105,6 +122,7 @@ export function App() {
         {activeTab === 'contacts' && <ContactsQueueView onLoadingChange={setPageLoading} />}
         {activeTab === 'templates' && <TemplatesView onLoadingChange={setPageLoading} />}
         {activeTab === 'settings' && <SettingsView onLoadingChange={setPageLoading} />}
+        {activeTab === 'jobs' && <JobsView onLoadingChange={setPageLoading} />}
       </main>
     </div>
   );

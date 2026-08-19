@@ -46,11 +46,26 @@ async def init_db():
     from sqlalchemy import text
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
-        try:
-            await conn.execute(text("ALTER TABLE context_profile ADD COLUMN IF NOT EXISTS full_name VARCHAR(255);"))
-        except Exception:
+
+        # --- Legacy column migrations (idempotent) ---
+        migrations = [
+            # context_profile.full_name
+            "ALTER TABLE context_profile ADD COLUMN full_name VARCHAR(255)",
+            # settings.job_agent_enabled
+            "ALTER TABLE settings ADD COLUMN job_agent_enabled BOOLEAN DEFAULT 0",
+            # job_preferences thresholds
+            "ALTER TABLE job_preferences ADD COLUMN auto_apply_threshold INTEGER DEFAULT 90",
+            "ALTER TABLE job_preferences ADD COLUMN max_applications_per_day INTEGER DEFAULT 20",
+            # send_log.channel
+            "ALTER TABLE send_log ADD COLUMN channel VARCHAR(50) DEFAULT 'cold_mail'",
+            # settings browser selection
+            "ALTER TABLE settings ADD COLUMN browser_type VARCHAR(50) DEFAULT 'brave'",
+            "ALTER TABLE settings ADD COLUMN browser_custom_path VARCHAR(512)",
+            "ALTER TABLE settings ADD COLUMN browser_cdp_port INTEGER DEFAULT 9222",
+        ]
+        for sql in migrations:
             try:
-                await conn.execute(text("ALTER TABLE context_profile ADD COLUMN full_name VARCHAR(255);"))
+                await conn.execute(text(sql))
             except Exception:
-                pass
+                pass  # Column already exists — safe to ignore
 

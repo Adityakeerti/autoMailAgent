@@ -268,3 +268,177 @@ Follow in order. Do not skip ahead — each step depends on the one before it. D
 - Custom CSS rejected chip: Added `.chip-rejected` styling to `index.css` for clean display of rejected contacts.
 - Contacts Directory Rejected Filter: Added a "rejected" status filter button to the Contacts Directory so users can easily view and manage contacts with a "rejected" status.
 - Build verified (`npm run build` and python test runner both completed with 0 errors).
+
+---
+
+## Job Application Agent — Module Integration
+
+> New module inside the same FastAPI backend. All steps share the same DB, same `user_id` auth middleware, same context layer, same LLM service. No new service, no new process.
+
+---
+
+## Step 38 — DB Models & Migration: job_listings + job_applications tables (DONE)
+
+**Goal:** Persistent store for discovered job listings and application tracking, plugged into the existing schema.
+
+- Add `JobListing` model to `app/models/all_models.py`:
+  - `id`, `user_id` (FK → users), `portal` (linkedin/indeed/naukri/wellfound/general), `job_title`, `company`, `location`, `description_raw` (Text), `job_url` (unique per user), `match_score` (Float, nullable), `match_reason` (Text, nullable), `recommended_angle` (Text, nullable), `status` (`new` → `scored` → `approved` → `applied` → `skipped`), `discovered_at`, `applied_at` (nullable)
+- Add `JobApplication` model:
+  - `id`, `user_id` (FK → users), `job_listing_id` (FK → job_listings), `portal`, `resume_version_url`, `application_status` (`submitted`/`failed`/`manual_needed`/`already_applied`), `error_msg` (Text, nullable), `applied_at`, `channel` = `"job_application"` (hard-coded default — distinguishes from `cold_mail` in aggregate queries)
+- Add `channel` column (String, default `"cold_mail"`) to `SendLog` model so existing send logs are queryable by channel
+- Add relationships on `User`: `job_listings`, `job_applications`
+- Run SQLite migration inside `init_db()` using `ALTER TABLE … ADD COLUMN IF NOT EXISTS` pattern already used throughout the codebase
+- Add `job_agent_enabled` (Boolean, default False) to `Setting` model + migration (only opted-in users get scheduled auto-runs)
+- Add `auto_apply_threshold` (Integer, default 90) and `max_applications_per_day` (Integer, default 20) to `JobPreference` model + migration
+- Confirm: `GET /health` still returns 200; tables visible in SQLite
+
+## Step 39 — Job Search Agent: Multi-portal scraper (API-first, no browser needed) (DONE)
+
+**Goal:** Pull raw job listings from all portals without touching a browser; store in `job_listings`.
+
+- Create `app/services/job_search.py`:
+  - `search_linkedin_jobs(roles, locations, experience_level)` — HTTP-based LinkedIn Jobs public search (same approach as existing `scrape_linkedin` in `scrapers.py`); returns list of `{title, company, location, url, description_snippet, portal: "linkedin"}`
+  - `search_indeed_jobs(roles, locations)` — Remotive/Arbeitnow as Indeed-equivalent fallback (already in `scrapers.py`, adapt to job listing shape)
+  - `search_naukri_jobs(roles, locations)` — Naukri public HTTP scrape; graceful fallback if blocked
+  - `search_wellfound_jobs(roles)` — Wellfound (YC) public HTTP or GraphQL; returns startup jobs matching roles
+  - `search_general_portals(roles)` — re-uses existing `scrape_arbeitnow()` + `scrape_ats_direct()` from `scrapers.py`; always runs regardless of login state
+  - `run_job_search(user_id, db)` — orchestrator: reads user's `JobPreference` (roles, locations, experience_level); fans out to all portals concurrently via `asyncio.gather`; deduplicates by `job_url` (skip URLs already in `job_listings` for this user); writes new listings to DB with `status="new"`; returns `{found: N, new: M, portals_hit: [...]}`
+- Create `app/routers/jobs.py`:
+  - `POST /jobs/search` — triggers `run_job_search`; returns count of new listings
+  - `GET /jobs/listings` — paginated; filterable by `status`, `portal`, `match_score_min`
+  - `GET /jobs/listings/{id}` — single listing detail
+- Register router in `app/main.py`
+- Confirm: `POST /jobs/search` returns new listings; rows appear in `job_listings` with correct `user_id` and `status="new"`
+
+## Step 40 — Job Filter Agent: LLM Scorer (DONE)
+
+**Goal:** AI-score every `new` listing against the user's full context layer; auto-approve high-scorers.
+
+- Create `app/services/job_filter.py`:
+  - `score_job(user_id, job_listing_id, db)` — assembles user's `context_profile` + `context_experience` + `context_projects` + `context_achievements` + `job_preferences`; builds prompt combining job description + user context; calls existing `app/services/llm.py`'s `call_llm()`; instructs LLM to return strict JSON `{"score": int 0-100, "reason": str ≤200 chars, "recommended_angle": str ≤100 chars}`; writes `match_score`, `match_reason`, `recommended_angle` back to the listing; if `match_score >= auto_apply_threshold`, sets `status="approved"` automatically, else sets `status="scored"` (lands in semi-auto queue)
+  - `score_all_new_listings(user_id, db)` — iterates all `status="new"` listings for the user, calls `score_job` for each
+- Add to `app/routers/jobs.py`:
+  - `POST /jobs/score` — triggers `score_all_new_listings`; returns `{scored: N, auto_approved: M, queued_for_review: K}`
+- Confirm: score 3–5 test listings; high-scoring ones (`≥90`) are auto-approved; low-scoring ones are in the review queue
+
+## Step 41 — Portal Login Detector: CDP-based session check (DONE)
+
+**Goal:** Detect which portals the user is logged into via their live Chrome browser over CDP port 9222. No separate browser profile — rides their real session.
+
+- Create `app/services/browser.py`:
+  - `get_cdp_browser()` — async context manager: `async with playwright.chromium.connect_over_cdp("http://localhost:9222") as browser`; raises `BrowserNotAvailableError` (custom exception) with a clear message if port 9222 is not open, so callers can return a graceful API error rather than a 500
+  - `check_portal_login(browser, portal: str) -> bool` — opens a background tab, navigates to the portal's auth-indicator URL, checks DOM for login signals:
+    - `linkedin`: `/feed` page, check `document.querySelector('.global-nav__me')` is not null
+    - `indeed`: `https://www.indeed.com/`, check for signed-in nav element
+    - `naukri`: `https://www.naukri.com/`, check `#login_Layer` is absent + user menu present
+    - `wellfound`: `https://wellfound.com/`, check nav shows username/avatar element
+  - `detect_all_portals(browser) -> dict[str, bool]` — runs all 4 checks; closes temporary tabs after
+- Add to `app/routers/jobs.py`:
+  - `GET /jobs/browser/status` — calls `get_cdp_browser()` + `detect_all_portals()`; returns `{cdp_reachable: bool, portals: {linkedin: bool, indeed: bool, naukri: bool, wellfound: bool}}`; if CDP not reachable, returns `{cdp_reachable: false, ...}` with HTTP 200 (not 500) so frontend can show actionable guidance
+- Confirm: with Chrome launched with `--remote-debugging-port=9222`, endpoint correctly detects at least one logged-in portal; tabs are closed cleanly after check
+
+## Step 42 — Application Agent: Playwright form filler (DONE)
+
+**Goal:** For each `approved` listing, navigate to the job URL in the user's live browser and submit an application with fresh resume upload.
+
+- Create `app/services/job_applicator.py`:
+  - `get_latest_resume_path(user_id, db) -> str` — fetches most recent `resumes` row ordered by `uploaded_at DESC`; for `local://` storage derives local path from `file_url`; for cloud storage downloads to a temp file via `app/services/storage.py`; caches path for the duration of one apply cycle; cleans up temp file after cycle
+  - `apply_to_job(user_id, job_listing_id, db, browser) -> dict` — dispatcher that routes to the correct filler based on `job_listing.portal`:
+    - `_apply_linkedin(page, listing, resume_path)` — click "Easy Apply" button; fill phone if field is blank; upload resume via `page.set_input_files()`; step through multi-page modal (Next, Next, …, Submit); detect "Already Applied" overlay → return `{status: "already_applied"}`
+    - `_apply_indeed(page, listing, resume_path)` — Indeed apply flow; if redirects to company ATS, delegate to `_apply_general`
+    - `_apply_naukri(page, listing, resume_path)` — Naukri apply; if OTP modal detected, set `manual_needed` + log and skip
+    - `_apply_wellfound(page, listing, resume_path)` — 1-click or multi-step Wellfound flow
+    - `_apply_general(page, listing, resume_path)` — generic: scan for `<form>`, fill name + email from `context_profile`, `page.set_input_files()` for resume, click submit button matching text patterns (`Submit`, `Apply`, `Send Application`)
+  - Human-paced delays: 1–3 s `asyncio.sleep` between each Playwright action; 2–5 s between consecutive applications
+  - After each apply: write `JobApplication` row (`application_status="submitted"` or `"failed"`); update `job_listings.status = "applied"` or `"failed"`; set `job_listings.applied_at`
+- Confirm: apply to one test listing (use a staging form or a job with an obvious Easy Apply); verify DB row, fresh resume uploaded, no crash
+
+## Step 43 — Tracking Agent: Approval Queue + Run Orchestrator (DONE)
+
+**Goal:** Wire Search → Filter → Apply into one orchestrated run with semi-auto gate and full-auto bypass.
+
+- Create `app/services/job_tracker.py`:
+  - `get_approval_queue(user_id, db)` — returns all `status="scored"` listings
+  - `approve_listing(user_id, listing_id, db)` — sets `status="approved"`
+  - `reject_listing(user_id, listing_id, db, reason: str = "")` — sets `status="skipped"`, stores reason in `match_reason`
+  - `run_apply_cycle(user_id, db, browser)` — iterates `status="approved"` listings for the user; checks daily cap (`max_applications_per_day`); calls `apply_to_job` for each; stops on cap; returns summary stats
+  - `full_pipeline_run(user_id, db)` — orchestrates: acquire browser (CDP) → `run_job_search` → `score_all_new_listings` → `run_apply_cycle`; if CDP not available, skip apply cycle and return `{browser_unavailable: true}`; returns full summary `{searched, scored, auto_approved, applied, failed, skipped, daily_cap_hit}`
+- Add to `app/routers/jobs.py`:
+  - `GET /jobs/queue` — lists `status="scored"` listings (score, reason, company, title, portal, JD link)
+  - `POST /jobs/queue/{id}/approve`
+  - `POST /jobs/queue/{id}/reject` — body: `{"reason": str}`
+  - `POST /jobs/run` — triggers `full_pipeline_run`; returns summary
+  - `GET /jobs/history` — paginated `job_applications` per user; filterable by `application_status`, `portal`, date
+  - `GET /jobs/stats` — aggregate: total applied, by portal, by status, by week
+  - `GET /jobs/errors` — all `failed` + `manual_needed` applications with error messages
+- Wire `full_pipeline_run` into APScheduler: every 6 hours, for users where `settings.job_agent_enabled = True`
+- Confirm: manual `POST /jobs/run` completes full cycle end-to-end; `GET /jobs/stats` returns correct counts
+
+## Step 44 — Job Application Agent Frontend: Jobs View (DONE)
+
+**Goal:** Add a Jobs tab to the existing frontend covering all pipeline controls, approval queue, and history.
+
+- Create `frontend/src/components/JobsView.tsx`:
+  - **Portal Status Panel** — calls `GET /jobs/browser/status`; shows each portal with green ✓ / red ✗ logged-in badge; shows CDP browser status; if CDP unreachable, shows guide: *"Launch Chrome with `--remote-debugging-port=9222` to enable browser apply"*
+  - **Run Controls** — "Run Full Pipeline" → `POST /jobs/run`; "Search + Score Only" → `POST /jobs/search` then `POST /jobs/score`; progress response displayed inline
+  - **Semi-Auto Approval Queue** — table of `status="scored"` listings; columns: Company, Title, Portal, Match Score (color-coded chip), Reason, Location, JD Link, Approve/Reject; bulk approve/reject
+  - **Auto-Apply Threshold Slider** — reads + writes `auto_apply_threshold` from `JobPreference` via existing `PUT /context/job-preferences`
+  - **Application History Table** — `GET /jobs/history`; columns: Company, Title, Portal, Applied At, Status chip; filterable
+  - **Stats Cards** — total applied, this week, by portal, success rate
+  - **Errors Panel** — `GET /jobs/errors`; shows failed/manual_needed applications with error messages
+- Add API helpers in `frontend/src/api.ts`: `runJobPipeline`, `searchJobs`, `scoreJobs`, `getJobListings`, `getJobQueue`, `approveJob`, `rejectJob`, `getJobHistory`, `getJobStats`, `getJobErrors`, `getBrowserStatus`
+- Add "Jobs" tab to sidebar/navigation in `App.tsx` (reuse existing nav pattern)
+- Add skeleton screens using existing `Skeleton.tsx` components for all loading states
+- Confirm: `npm run build` passes with 0 errors; all endpoints reachable from UI
+
+## Step 45 — Resume Dynamic Upload per Application (DONE)
+
+**Goal:** Every application always uploads the user's latest resume PDF fresh — no relying on stale portal-saved resumes.
+
+- In `job_applicator.py`, ensure `get_latest_resume_path()`:
+  - Fetches the most recent `resumes` row for `user_id` (ordered by `uploaded_at DESC`)
+  - For `local://` storage: derives path directly from `file_url`
+  - For cloud storage: downloads to a named temp file in OS temp dir using storage service
+  - Caches the resolved local path within the apply cycle (avoids redundant downloads per listing)
+  - Deletes the temp file after `run_apply_cycle` completes
+- In each portal filler, use `page.set_input_files(selector, resume_path)` with multiple fallback selectors: `input[type=file][accept*="pdf"]`, `[data-testid*="resume"]`, `#resume-upload`, `input[name*="resume"]`
+- Confirm: delete portal-saved resume from test account; run applicator; verify fresh PDF was uploaded (not portal's stale copy)
+
+## Step 46 — Safety Rails, Rate Limiting & Error Recovery (DONE)
+
+**Goal:** Prevent runaway spam, handle anti-bot blocks gracefully, no duplicate applications.
+
+- **Duplicate guard**: before calling any portal filler, query `job_applications` for `(user_id, job_listing_id)` where `application_status="submitted"`; if exists, skip and mark `already_applied`
+- **Daily cap**: `run_apply_cycle` checks count of today's `submitted` applications; stops at `max_applications_per_day`; returns `stopped_reason: "daily_cap_reached"` in stats
+- **CAPTCHA/OTP detection**: after every major navigation, check for CAPTCHA/OTP/re-auth modal selectors; if detected, set `application_status="manual_needed"`, log the step, skip to next listing without crashing
+- **Portal-block backoff**: if a portal filler raises `NavigationError` or detects a challenge page ≥2 times consecutively, mark that portal as temporarily blocked for 30 min in an in-memory set; `run_apply_cycle` skips that portal's listings until timeout
+- **Retry on transient failure**: network timeouts retry up to 2 times with 5 s backoff before marking `failed`
+- **`playwright` + `playwright-stealth` in requirements.txt** — add both dependencies
+- Confirm: simulate "already applied" (pre-insert a `submitted` row); verify dedup guard fires and no duplicate; simulate daily cap; verify cycle stops at cap
+
+## Step 47 — Multi-Browser Selection & Launcher Integration (DONE)
+
+**Goal:** Allow users to choose their automation browser (Brave, Chrome, Edge, Custom) and launch it automatically or manually with correct CDP ports.
+
+- **DB settings columns**: Add `browser_type` (default "brave"), `browser_custom_path` (nullable), and `browser_cdp_port` (default 9222) to `settings` table with idempotent migrations.
+- **Dynamic discovery**: Implement search heuristics in `app/services/browser.py` to auto-detect installations of Brave, Google Chrome, and Microsoft Edge across Windows, macOS, and Linux.
+- **Copyable commands**: Generate copy-to-clipboard commands for PowerShell, CMD, and Terminal based on the chosen browser and port.
+- **Background auto-launcher**: Provide `POST /jobs/browser/launch` to auto-detect and spawn the chosen browser as a detached background process with remote debugging enabled.
+- **Status API update**: Parameterize connection heuristics to verify custom ports and return matching browser names and configs.
+- **Frontend integration**:
+  - Add interactive browser configurator selectors (Brave, Chrome, Edge, Custom) in the **Job Agent** tab and general **Settings** tab.
+  - Implement a direct `"Launch Browser"` action button.
+  - Add custom path and port text input fields with auto-save behavior.
+- **Verification**: Verify that `npm run build` compiles with 0 errors, and all tests pass.
+
+## Step 48 — Render Spin-Up Gamified Loading Screen (DONE)
+
+**Goal:** Provide an engaging, interactive loading minigame for users when the backend is waking up from a Render free tier sleep (cold start).
+
+- **RenderLoadingScreen component**: Create `frontend/src/components/RenderLoadingScreen.tsx` housing the "Outreach Clicker & Lead Catcher" minigame.
+- **Interactive Gameplay**:
+  - Spawn floating target bubbles representing Jobs, Leads, Recruiters, and Spam.
+  - Track player score, high scores in LocalStorage, levels, and trigger visual reactions upon clicks.
+- **Boot Monitoring**: Include an estimated progress bar mapping FastAPI boot processes, polling `GET /health` in the background until the server comes online.
+- **App Integration**: Embed the check in `frontend/src/App.tsx` preventing blank/hanging screens, only rendering the auth landing pages or dashboard once the backend handshake completes.
+- **Verification**: Built and compiled with 0 TypeScript/Vite errors.

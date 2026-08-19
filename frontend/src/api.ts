@@ -127,4 +127,33 @@ export const api = {
   // Auth additions
   getMe: () => request<any>("/auth/me"),
   logout: () => request<any>("/auth/logout", { method: "POST" }),
+
+  // Job Application Agent
+  searchJobs: () => request<any>("/jobs/search", { method: "POST" }),
+  scoreJobs: () => request<any>("/jobs/score", { method: "POST" }),
+  getJobListings: (params?: { status?: string; portal?: string; match_score_min?: number; page?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.status) q.set("status", params.status);
+    if (params?.portal) q.set("portal", params.portal);
+    if (params?.match_score_min != null) q.set("match_score_min", String(params.match_score_min));
+    if (params?.page) q.set("page", String(params.page));
+    return request<any>(`/jobs/listings${q.toString() ? "?" + q : ""}`);
+  },
+  getJobListing: (id: number) => request<any>(`/jobs/listings/${id}`),
+  getJobQueue: () => request<any>("/jobs/queue"),
+  approveJob: (id: number) => request<any>(`/jobs/queue/${id}/approve`, { method: "POST" }),
+  rejectJob: (id: number, reason?: string) => request<any>(`/jobs/queue/${id}/reject`, { method: "POST", body: JSON.stringify({ reason: reason || "" }) }),
+  runJobPipeline: () => request<any>("/jobs/run", { method: "POST" }),
+  getJobHistory: (params?: { application_status?: string; portal?: string; page?: number }) => {
+    const q = new URLSearchParams();
+    if (params?.application_status) q.set("application_status", params.application_status);
+    if (params?.portal) q.set("portal", params.portal);
+    if (params?.page) q.set("page", String(params.page));
+    return request<any>(`/jobs/history${q.toString() ? "?" + q : ""}`);
+  },
+  getJobStats: () => request<any>("/jobs/stats"),
+  getJobErrors: () => request<any>("/jobs/errors"),
+  getBrowserStatus: () => request<any>("/jobs/browser/status"),
+  launchBrowser: () => request<any>("/jobs/browser/launch", { method: "POST" }),
+  updateBrowserConfig: (data: { browser_type: string; browser_cdp_port?: number; browser_custom_path?: string }) => request<any>("/jobs/browser/config", { method: "PUT", body: JSON.stringify(data) }),
 };

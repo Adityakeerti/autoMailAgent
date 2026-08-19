@@ -10,5 +10,7 @@ from app.models.all_models import (
     Template,
     Contact,
     ScrapeQueue,
-    SendLog
+    SendLog,
+    JobListing,
+    JobApplication,
 )

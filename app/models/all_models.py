@@ -1,6 +1,6 @@
 import datetime
 from typing import Optional, List
-from sqlalchemy import String, Integer, DateTime, Text, ForeignKey, JSON, Float
+from sqlalchemy import String, Integer, DateTime, Text, ForeignKey, JSON, Float, Boolean
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.database import Base
 
@@ -24,6 +24,8 @@ class User(Base):
     contacts: Mapped[List["Contact"]] = relationship("Contact", back_populates="user", cascade="all, delete-orphan")
     scrape_queues: Mapped[List["ScrapeQueue"]] = relationship("ScrapeQueue", back_populates="user", cascade="all, delete-orphan")
     send_logs: Mapped[List["SendLog"]] = relationship("SendLog", back_populates="user", cascade="all, delete-orphan")
+    job_listings: Mapped[List["JobListing"]] = relationship("JobListing", back_populates="user", cascade="all, delete-orphan")
+    job_applications: Mapped[List["JobApplication"]] = relationship("JobApplication", back_populates="user", cascade="all, delete-orphan")
 
 class Setting(Base):
     __tablename__ = "settings"
@@ -51,6 +53,12 @@ class Setting(Base):
     send_mode: Mapped[str] = mapped_column(String(50), default="review") # auto, review, auto_pause_on_signal
     schedule_window: Mapped[str] = mapped_column(String(50), default="08:00-23:00")
     daily_target: Mapped[int] = mapped_column(Integer, default=50)
+
+    # Job Application Agent settings
+    job_agent_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    browser_type: Mapped[str] = mapped_column(String(50), default="brave") # brave, chrome, edge, custom
+    browser_custom_path: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    browser_cdp_port: Mapped[int] = mapped_column(Integer, default=9222)
 
     user: Mapped["User"] = relationship("User", back_populates="settings")
 
@@ -134,6 +142,10 @@ class JobPreference(Base):
     locations: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     experience_level: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
 
+    # Job Application Agent thresholds
+    auto_apply_threshold: Mapped[int] = mapped_column(Integer, default=90)
+    max_applications_per_day: Mapped[int] = mapped_column(Integer, default=20)
+
     user: Mapped["User"] = relationship("User", back_populates="job_preferences")
 
 class Template(Base):
@@ -190,5 +202,54 @@ class SendLog(Base):
     sent_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.utcnow)
     status: Mapped[str] = mapped_column(String(50), default="sent")
     message_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    channel: Mapped[str] = mapped_column(String(50), default="cold_mail")  # cold_mail | job_application
 
     user: Mapped["User"] = relationship("User", back_populates="send_logs")
+
+
+class JobListing(Base):
+    __tablename__ = "job_listings"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    portal: Mapped[str] = mapped_column(String(50), nullable=False)  # linkedin/indeed/naukri/wellfound/arbeitnow/general
+    job_title: Mapped[str] = mapped_column(String(255), nullable=False)
+    company: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    location: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    description_raw: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    job_url: Mapped[str] = mapped_column(String(512), nullable=False)
+
+    match_score: Mapped[Optional[float]] = mapped_column(Float, nullable=True)
+    match_reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    recommended_angle: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    # new → scored → approved → applied → skipped
+    status: Mapped[str] = mapped_column(String(50), default="new")
+
+    discovered_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.utcnow)
+    applied_at: Mapped[Optional[datetime.datetime]] = mapped_column(DateTime, nullable=True)
+
+    user: Mapped["User"] = relationship("User", back_populates="job_listings")
+    applications: Mapped[List["JobApplication"]] = relationship("JobApplication", back_populates="job_listing", cascade="all, delete-orphan")
+
+
+class JobApplication(Base):
+    __tablename__ = "job_applications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    job_listing_id: Mapped[int] = mapped_column(ForeignKey("job_listings.id", ondelete="CASCADE"), nullable=False)
+
+    portal: Mapped[str] = mapped_column(String(50), nullable=False)
+    resume_version_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+
+    # submitted | failed | manual_needed | already_applied
+    application_status: Mapped[str] = mapped_column(String(50), default="submitted")
+    error_msg: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+
+    channel: Mapped[str] = mapped_column(String(50), default="job_application")
+    applied_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.utcnow)
+
+    user: Mapped["User"] = relationship("User", back_populates="job_applications")
+    job_listing: Mapped["JobListing"] = relationship("JobListing", back_populates="applications")

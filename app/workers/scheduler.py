@@ -116,12 +116,33 @@ async def global_batch_scraping():
         except Exception as e:
             logger.error(f"Error in scheduled batch scraping for user {uid}: {e}")
 
+async def global_job_pipeline():
+    """Scheduled job: runs the full job application pipeline for opted-in users every 6 hours."""
+    logger.info("Starting scheduled job application pipeline...")
+    from app.services.job_tracker import full_pipeline_run
+    async with AsyncSessionLocal() as db:
+        res_users = await db.execute(
+            select(User.id).join(Setting, Setting.user_id == User.id).where(Setting.job_agent_enabled.is_(True))
+        )
+        user_ids = res_users.scalars().all()
+
+    for uid in user_ids:
+        try:
+            async with AsyncSessionLocal() as db:
+                result = await full_pipeline_run(uid, db)
+                logger.info(f"Scheduled job pipeline for user {uid}: {result}")
+        except Exception as e:
+            logger.error(f"Error in scheduled job pipeline for user {uid}: {e}")
+
+
 def start_scheduler():
     if not scheduler.running:
         scheduler.add_job(global_scheduler_tick, 'interval', minutes=1, id='automail_queue_job')
         scheduler.add_job(global_batch_scraping, 'interval', hours=6, id='automail_batch_scrape')
+        scheduler.add_job(global_job_pipeline, 'interval', hours=6, id='job_application_pipeline')
         scheduler.start()
 
 def stop_scheduler():
     if scheduler.running:
         scheduler.shutdown()
+

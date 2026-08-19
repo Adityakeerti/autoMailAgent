@@ -11,7 +11,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onLoadingChange }) =
   const [st, setSt] = useState<any>({
     smtp_host: '', smtp_port: 587, smtp_user: '', smtp_password: '',
     imap_host: '', imap_port: 993, imap_user: '', imap_password: '',
-    linkedin_cookie: '', send_mode: 'review', schedule_window: '08:00-23:00', daily_target: 50
+    linkedin_cookie: '', send_mode: 'review', schedule_window: '08:00-23:00', daily_target: 50,
+    job_agent_enabled: false, browser_type: 'brave', browser_custom_path: '', browser_cdp_port: 9222
   });
 
   const [initialLoading, setInitialLoading] = useState(true);
@@ -193,6 +194,50 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onLoadingChange }) =
               <label className="form-label">Custom Connection Cookie Override (Optional) {st.has_linkedin_cookie ? '(Saved)' : ''}</label>
               <input type="password" className="form-input" placeholder="AQED..." value={st.linkedin_cookie || ''} onChange={(e) => setSt({ ...st, linkedin_cookie: e.target.value })} />
             </div>
+          </div>
+
+          {/* Browser & Automation Settings */}
+          <div className="card">
+            <div className="card-header">
+              <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                Browser Automation Settings
+              </h3>
+            </div>
+            <p style={{ fontSize: '13px', color: 'var(--on-surface-variant)', marginBottom: '12px' }}>
+              Configure your preferred browser for autonomous application form filling.
+            </p>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px', marginBottom: '12px' }}>
+              <div className="form-group">
+                <label className="form-label">Job Agent Scheduled Auto-Runs</label>
+                <select className="form-select" value={st.job_agent_enabled ? 'true' : 'false'} onChange={(e) => setSt({ ...st, job_agent_enabled: e.target.value === 'true' })}>
+                  <option value="false">Disabled (Manual trigger only)</option>
+                  <option value="true">Enabled (Autonomous run every 6 hours)</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Preferred Browser</label>
+                <select className="form-select" value={st.browser_type || 'brave'} onChange={(e) => setSt({ ...st, browser_type: e.target.value })}>
+                  <option value="brave">Brave Browser (🦁)</option>
+                  <option value="chrome">Google Chrome (🌐)</option>
+                  <option value="edge">Microsoft Edge (🌊)</option>
+                  <option value="custom">Custom / Other Chromium (⚙️)</option>
+                </select>
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">CDP Debugging Port</label>
+                <input type="number" className="form-input" value={st.browser_cdp_port || 9222} onChange={(e) => setSt({ ...st, browser_cdp_port: parseInt(e.target.value) || 9222 })} />
+              </div>
+            </div>
+
+            {st.browser_type === 'custom' && (
+              <div className="form-group" style={{ margin: 0 }}>
+                <label className="form-label">Custom Executable Path</label>
+                <input type="text" className="form-input" placeholder="e.g. C:\Program Files\Vivaldi\Application\vivaldi.exe" value={st.browser_custom_path || ''} onChange={(e) => setSt({ ...st, browser_custom_path: e.target.value })} />
+              </div>
+            )}
           </div>
 
           <button type="submit" className="btn btn-primary btn-lg" disabled={loading} style={{ padding: '12px 24px' }}>

@@ -27,6 +27,11 @@ class SettingsUpdate(BaseModel):
     schedule_window: Optional[str] = None # e.g. "08:00-23:00"
     daily_target: Optional[int] = None
 
+    job_agent_enabled: Optional[bool] = None
+    browser_type: Optional[str] = None # brave, chrome, edge, custom
+    browser_custom_path: Optional[str] = None
+    browser_cdp_port: Optional[int] = None
+
 class SettingsResponse(BaseModel):
     smtp_host: Optional[str] = None
     smtp_port: Optional[int] = None
@@ -44,6 +49,11 @@ class SettingsResponse(BaseModel):
     send_mode: str
     schedule_window: str
     daily_target: int
+
+    job_agent_enabled: bool = False
+    browser_type: str = "brave"
+    browser_custom_path: Optional[str] = None
+    browser_cdp_port: int = 9222
 
 @router.get("", response_model=SettingsResponse)
 async def get_settings(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
@@ -68,7 +78,11 @@ async def get_settings(current_user: User = Depends(get_current_user), db: Async
         has_linkedin_cookie=bool(st.linkedin_cookie_enc),
         send_mode=st.send_mode,
         schedule_window=st.schedule_window,
-        daily_target=st.daily_target
+        daily_target=st.daily_target,
+        job_agent_enabled=bool(st.job_agent_enabled),
+        browser_type=st.browser_type or "brave",
+        browser_custom_path=st.browser_custom_path,
+        browser_cdp_port=st.browser_cdp_port or 9222
     )
 
 @router.put("", response_model=SettingsResponse)
@@ -98,6 +112,18 @@ async def update_settings(data: SettingsUpdate, current_user: User = Depends(get
     if data.schedule_window is not None: st.schedule_window = data.schedule_window
     if data.daily_target is not None: st.daily_target = data.daily_target
 
+    if data.job_agent_enabled is not None: st.job_agent_enabled = data.job_agent_enabled
+    if data.browser_type is not None:
+        valid_browsers = ["brave", "chrome", "edge", "custom"]
+        if data.browser_type.lower() not in valid_browsers:
+            raise HTTPException(status_code=400, detail=f"Invalid browser_type. Must be one of: {', '.join(valid_browsers)}")
+        st.browser_type = data.browser_type.lower()
+    if data.browser_custom_path is not None: st.browser_custom_path = data.browser_custom_path
+    if data.browser_cdp_port is not None:
+        if data.browser_cdp_port < 1024 or data.browser_cdp_port > 65535:
+            raise HTTPException(status_code=400, detail="Invalid CDP port. Must be between 1024 and 65535.")
+        st.browser_cdp_port = data.browser_cdp_port
+
     await db.commit()
     await db.refresh(st)
 
@@ -114,5 +140,9 @@ async def update_settings(data: SettingsUpdate, current_user: User = Depends(get
         has_linkedin_cookie=bool(st.linkedin_cookie_enc),
         send_mode=st.send_mode,
         schedule_window=st.schedule_window,
-        daily_target=st.daily_target
+        daily_target=st.daily_target,
+        job_agent_enabled=bool(st.job_agent_enabled),
+        browser_type=st.browser_type or "brave",
+        browser_custom_path=st.browser_custom_path,
+        browser_cdp_port=st.browser_cdp_port or 9222
     )
