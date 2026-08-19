@@ -52,7 +52,7 @@ async def init_db():
             # context_profile.full_name
             "ALTER TABLE context_profile ADD COLUMN full_name VARCHAR(255)",
             # settings.job_agent_enabled
-            "ALTER TABLE settings ADD COLUMN job_agent_enabled BOOLEAN DEFAULT 0",
+            "ALTER TABLE settings ADD COLUMN job_agent_enabled BOOLEAN DEFAULT FALSE",
             # job_preferences thresholds
             "ALTER TABLE job_preferences ADD COLUMN auto_apply_threshold INTEGER DEFAULT 90",
             "ALTER TABLE job_preferences ADD COLUMN max_applications_per_day INTEGER DEFAULT 20",
