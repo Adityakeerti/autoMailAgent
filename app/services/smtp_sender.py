@@ -53,8 +53,8 @@ async def send_contact_email_via_smtp(contact: Contact, db: AsyncSession) -> boo
     smtp_user = st.smtp_user
 
     # --- Determine authentication method ---
-    # Priority: Google XOAUTH2 (if refresh_token present) > App Password > fail
-    use_xoauth2 = bool(st.google_refresh_token_enc)
+    # Priority: Google XOAUTH2 (if refresh_token present and no SMTP password is configured) > App Password > fail
+    use_xoauth2 = bool(st.google_refresh_token_enc) and not bool(st.smtp_password_enc)
     access_token: str | None = None
 
     if use_xoauth2:

@@ -26,7 +26,7 @@ export function App() {
 
   const checkServerStatus = async (): Promise<boolean> => {
     try {
-      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/health`);
+      const res = await fetch(`${import.meta.env.VITE_API_BASE_URL || ''}/ping`);
       return res.ok;
     } catch (e) {
       return false;

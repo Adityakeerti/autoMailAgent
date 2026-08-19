@@ -96,7 +96,12 @@ async def update_settings(data: SettingsUpdate, current_user: User = Depends(get
     if data.smtp_host is not None: st.smtp_host = data.smtp_host
     if data.smtp_port is not None: st.smtp_port = data.smtp_port
     if data.smtp_user is not None: st.smtp_user = data.smtp_user
-    if data.smtp_password is not None: st.smtp_password_enc = encrypt_secret(data.smtp_password)
+    if data.smtp_password is not None:
+        st.smtp_password_enc = encrypt_secret(data.smtp_password)
+        # Clear any existing Google OAuth tokens when configuring standard password SMTP
+        st.google_refresh_token_enc = None
+        st.google_access_token_enc = None
+        st.google_token_expiry = None
 
     if data.imap_host is not None: st.imap_host = data.imap_host
     if data.imap_port is not None: st.imap_port = data.imap_port
