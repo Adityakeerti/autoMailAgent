@@ -1,3 +1,6 @@
+import os
+os.environ["DATABASE_URL"] = "sqlite+aiosqlite:///./test_automail.db"
+
 import asyncio
 from httpx import AsyncClient, ASGITransport
 from app.main import app
