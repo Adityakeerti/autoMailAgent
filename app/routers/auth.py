@@ -243,78 +243,86 @@ async def google_auth_callback(code: str = Query(...), db: AsyncSession = Depend
     - Stores encrypted refresh_token for long-term XOAUTH2 sending
     - Redirects browser to dashboard with JWT
     """
-    google_data = await _exchange_google_code(code)
+    try:
+        google_data = await _exchange_google_code(code)
 
-    email = google_data["email"]
-    access_token = google_data["access_token"]
-    refresh_token = google_data.get("refresh_token")
-    expires_in = google_data.get("expires_in", 3600)
-    clean_email = email.strip().lower()
+        email = google_data["email"]
+        access_token = google_data["access_token"]
+        refresh_token = google_data.get("refresh_token")
+        expires_in = google_data.get("expires_in", 3600)
+        clean_email = email.strip().lower()
 
-    # Find or create user
-    res = await db.execute(select(User).where(User.email == clean_email))
-    user = res.scalar_one_or_none()
+        # Find or create user
+        res = await db.execute(select(User).where(User.email == clean_email))
+        user = res.scalar_one_or_none()
 
-    if not user:
-        user = User(
-            email=clean_email,
-            # OAuth users don't have a password; set a random non-guessable hash
-            password_hash=hash_password(f"google_oauth_{clean_email}_no_password_login")
-        )
-        db.add(user)
+        if not user:
+            user = User(
+                email=clean_email,
+                # OAuth users don't have a password; set a random non-guessable hash
+                password_hash=hash_password(f"google_oauth_{clean_email}_no_password_login")
+            )
+            db.add(user)
+            await db.commit()
+            await db.refresh(user)
+
+            for tmpl in DEFAULT_TEMPLATES:
+                db.add(Template(
+                    user_id=user.id,
+                    category=tmpl["category"],
+                    subject_template=tmpl["subject_template"],
+                    body_template=tmpl["body_template"]
+                ))
+
+        # Upsert Gmail settings with OAuth tokens
+        st_res = await db.execute(select(Setting).where(Setting.user_id == user.id))
+        st = st_res.scalar_one_or_none()
+        if not st:
+            st = Setting(user_id=user.id)
+            db.add(st)
+
+        now = datetime.datetime.utcnow()
+        st.smtp_user = clean_email
+        st.smtp_host = "smtp.gmail.com"
+        st.smtp_port = 587
+        st.imap_user = clean_email
+        st.imap_host = "imap.gmail.com"
+        st.imap_port = 993
+
+        # Always update access token
+        st.google_access_token_enc = encrypt_secret(access_token)
+        st.google_token_expiry = now + datetime.timedelta(seconds=int(expires_in))
+
+        # Only update refresh_token if Google provided one (it's only returned on first consent)
+        if refresh_token:
+            st.google_refresh_token_enc = encrypt_secret(refresh_token)
+
         await db.commit()
-        await db.refresh(user)
 
-        for tmpl in DEFAULT_TEMPLATES:
-            db.add(Template(
-                user_id=user.id,
-                category=tmpl["category"],
-                subject_template=tmpl["subject_template"],
-                body_template=tmpl["body_template"]
-            ))
+        jwt_token = create_access_token(user_id=user.id, email=user.email)
 
-    # Upsert Gmail settings with OAuth tokens
-    st_res = await db.execute(select(Setting).where(Setting.user_id == user.id))
-    st = st_res.scalar_one_or_none()
-    if not st:
-        st = Setting(user_id=user.id)
-        db.add(st)
+        # Redirect to frontend with token as URL param (needed for cross-origin Vercel → Render setup)
+        # Falls back to "/" (same-origin) when FRONTEND_URL is not configured
+        frontend_base = settings.FRONTEND_URL.rstrip("/") if settings.FRONTEND_URL else ""
+        redirect_url = f"{frontend_base}/?token={jwt_token}" if frontend_base else f"/?token={jwt_token}"
 
-    now = datetime.datetime.utcnow()
-    st.smtp_user = clean_email
-    st.smtp_host = "smtp.gmail.com"
-    st.smtp_port = 587
-    st.imap_user = clean_email
-    st.imap_host = "imap.gmail.com"
-    st.imap_port = 993
-
-    # Always update access token
-    st.google_access_token_enc = encrypt_secret(access_token)
-    st.google_token_expiry = now + datetime.timedelta(seconds=expires_in)
-
-    # Only update refresh_token if Google provided one (it's only returned on first consent)
-    if refresh_token:
-        st.google_refresh_token_enc = encrypt_secret(refresh_token)
-
-    await db.commit()
-
-    jwt_token = create_access_token(user_id=user.id, email=user.email)
-
-    # Redirect to frontend with token as URL param (needed for cross-origin Vercel → Render setup)
-    # Falls back to "/" (same-origin) when FRONTEND_URL is not configured
-    frontend_base = settings.FRONTEND_URL.rstrip("/") if settings.FRONTEND_URL else ""
-    redirect_url = f"{frontend_base}/?token={jwt_token}" if frontend_base else f"/?token={jwt_token}"
-
-    response = RedirectResponse(url=redirect_url)
-    response.set_cookie(
-        key="token",
-        value=jwt_token,
-        httponly=True,
-        secure=True,
-        samesite="none",
-        max_age=7 * 24 * 3600
-    )
-    return response
+        response = RedirectResponse(url=redirect_url)
+        response.set_cookie(
+            key="token",
+            value=jwt_token,
+            httponly=True,
+            secure=True,
+            samesite="none",
+            max_age=7 * 24 * 3600
+        )
+        return response
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Google callback internal error: {type(e).__name__}: {str(e)}"
+        )
 
 
 @router.post("/logout")
