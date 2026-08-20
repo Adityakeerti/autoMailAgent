@@ -150,6 +150,17 @@ def main():
             print(f"❌ ERROR! Dispatch failed with status {dispatch_resp.status_code}")
             print("=" * 60)
             print(f"Server response body: {dispatch_resp.text}")
+            
+            # Fetch recent send logs for diagnostics
+            try:
+                logs_resp = httpx.get(f"{BASE_URL}/debug-logs", headers=headers, timeout=60.0)
+                if logs_resp.status_code == 200:
+                    print("\nRecent Database Send Logs:")
+                    for entry in logs_resp.json()[:3]:
+                        print(f" - Log ID: {entry.get('id')}, Contact: {entry.get('contact_id')}, Status: {entry.get('status')}")
+            except Exception:
+                pass
+
             print("\nDiagnostics suggestion:")
             if "SMTP authentication failed" in dispatch_resp.text:
                 print(" -> Check your SMTP App Password in Settings. Ensure 2-Factor Auth is enabled on your Gmail account and you are using a generated 'App Password', NOT your primary login password.")
