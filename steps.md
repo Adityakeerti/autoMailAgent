@@ -451,4 +451,5 @@ Follow in order. Do not skip ahead — each step depends on the one before it. D
 - **Frontend App.tsx update:** Changed `checkServerStatus` polling endpoint in `frontend/src/App.tsx` from `/health` to `/ping` to bypass client adblockers/track lists (EasyPrivacy).
 - **Settings Save OAuth Cleanup:** Updated `update_settings` in `app/routers/settings.py` to clear the `google_refresh_token_enc`, `google_access_token_enc`, and `google_token_expiry` fields when a user submits/saves an SMTP App Password.
 - **SMTP Sender Fallback Priority:** Updated `send_contact_email_via_smtp` in `app/services/smtp_sender.py` to only trigger XOAUTH2 if a Google refresh token exists AND no standard SMTP App Password is configured (`use_xoauth2 = bool(st.google_refresh_token_enc) and not bool(st.smtp_password_enc)`).
+- **HTTPS Gmail API Fallback:** Routed Google OAuth (XOAUTH2) email dispatches via the official Gmail API (HTTPS over port 443) instead of SMTP. This bypasses outbound SMTP port blocks (25, 465, 587) enforced on Render's free tier.
 - **Verification:** Re-ran all backend tests successfully and verified the frontend builds with 0 compile errors.

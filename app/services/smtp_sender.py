@@ -97,63 +97,95 @@ async def send_contact_email_via_smtp(contact: Contact, db: AsyncSession) -> boo
     msg["Message-ID"] = message_id
     msg.attach(MIMEText(contact.body or "", "plain"))
 
-    # --- Send via SMTP ---
-    try:
-        if smtp_port == 465:
-            server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15)
-        else:
-            server = smtplib.SMTP(smtp_host, smtp_port, timeout=15)
-            server.ehlo()
-            server.starttls()
-            server.ehlo()
+    # --- Send ---
+    if use_xoauth2:
+        try:
+            # Send using Gmail API (HTTPS) to bypass Render SMTP port blocks
+            import httpx
+            # Convert email to raw base64url format
+            raw_message = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
+            url = "https://gmail.googleapis.com/gmail/v1/users/me/messages/send"
+            headers = {
+                "Authorization": f"Bearer {access_token}",
+                "Content-Type": "application/json"
+            }
+            payload = {"raw": raw_message}
+            
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.post(url, headers=headers, json=payload)
+                if resp.status_code != 200:
+                    raise Exception(f"Gmail API error: {resp.text}")
+            
+            contact.status = "sent"
+            db.add(SendLog(
+                user_id=user_id,
+                contact_id=contact.id,
+                sent_at=datetime.datetime.utcnow(),
+                status="sent",
+                message_id=message_id
+            ))
+            await db.commit()
+            logger.info(f"Email successfully sent to {contact.email} for user {user_id} via Gmail API (HTTPS)")
+            return True
+        except Exception as e:
+            logger.error(f"Gmail API send failed for user {user_id}: {e}")
+            db.add(SendLog(
+                user_id=user_id,
+                contact_id=contact.id,
+                sent_at=datetime.datetime.utcnow(),
+                status=f"failed: Gmail API error: {str(e)[:100]}",
+                message_id=message_id
+            ))
+            await db.commit()
+            return False
+    else:
+        # Standard SMTP sending
+        try:
+            if smtp_port == 465:
+                server = smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=15)
+            else:
+                server = smtplib.SMTP(smtp_host, smtp_port, timeout=15)
+                server.ehlo()
+                server.starttls()
+                server.ehlo()
 
-        if use_xoauth2:
-            xoauth2_string = _build_xoauth2_string(smtp_user, access_token)
-            code, resp = server.docmd("AUTH", f"XOAUTH2 {xoauth2_string}")
-            if code != 235:
-                raise smtplib.SMTPAuthenticationError(code, resp)
-        else:
             server.login(smtp_user, smtp_password)
+            server.send_message(msg)
+            server.quit()
 
-        server.send_message(msg)
-        server.quit()
+            contact.status = "sent"
+            db.add(SendLog(
+                user_id=user_id,
+                contact_id=contact.id,
+                sent_at=datetime.datetime.utcnow(),
+                status="sent",
+                message_id=message_id
+            ))
+            await db.commit()
+            logger.info(f"Email successfully sent to {contact.email} for user {user_id} via App Password")
+            return True
 
-        contact.status = "sent"
-        db.add(SendLog(
-            user_id=user_id,
-            contact_id=contact.id,
-            sent_at=datetime.datetime.utcnow(),
-            status="sent",
-            message_id=message_id
-        ))
-        await db.commit()
-        logger.info(f"Email successfully sent to {contact.email} for user {user_id} via {'XOAUTH2' if use_xoauth2 else 'App Password'}")
-        return True
-
-    except smtplib.SMTPAuthenticationError as e:
-        if use_xoauth2:
-            err_detail = "XOAUTH2 authentication failed. Your Google session may have been revoked. Please re-authenticate via Google."
-        else:
+        except smtplib.SMTPAuthenticationError as e:
             err_detail = "SMTP authentication failed. Check your App Password in Settings."
-        logger.error(f"SMTP auth error for user {user_id}: {e}")
-        db.add(SendLog(
-            user_id=user_id,
-            contact_id=contact.id,
-            sent_at=datetime.datetime.utcnow(),
-            status=f"failed: {err_detail}",
-            message_id=message_id
-        ))
-        await db.commit()
-        return False
+            logger.error(f"SMTP auth error for user {user_id}: {e}")
+            db.add(SendLog(
+                user_id=user_id,
+                contact_id=contact.id,
+                sent_at=datetime.datetime.utcnow(),
+                status=f"failed: {err_detail}",
+                message_id=message_id
+            ))
+            await db.commit()
+            return False
 
-    except Exception as e:
-        logger.error(f"Failed sending email via SMTP for user {user_id}: {e}")
-        db.add(SendLog(
-            user_id=user_id,
-            contact_id=contact.id,
-            sent_at=datetime.datetime.utcnow(),
-            status=f"failed: {str(e)[:120]}",
-            message_id=message_id
-        ))
-        await db.commit()
-        return False
+        except Exception as e:
+            logger.error(f"Failed sending email via SMTP for user {user_id}: {e}")
+            db.add(SendLog(
+                user_id=user_id,
+                contact_id=contact.id,
+                sent_at=datetime.datetime.utcnow(),
+                status=f"failed: {str(e)[:120]}",
+                message_id=message_id
+            ))
+            await db.commit()
+            return False
