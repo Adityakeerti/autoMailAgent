@@ -34,4 +34,24 @@ async def debug_settings(current_user: User = Depends(get_current_user), db: Asy
         "smtp_user": st.smtp_user,
     }
 
+from app.models import SendLog
+
+@router.get("/debug-logs")
+async def debug_logs(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    res = await db.execute(
+        select(SendLog).where(SendLog.user_id == current_user.id).order_by(SendLog.sent_at.desc()).limit(10)
+    )
+    logs = res.scalars().all()
+    return [
+        {
+            "id": l.id,
+            "contact_id": l.contact_id,
+            "sent_at": l.sent_at.isoformat() if l.sent_at else None,
+            "status": l.status,
+            "message_id": l.message_id
+        }
+        for l in logs
+    ]
+
+
 
