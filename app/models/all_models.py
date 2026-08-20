@@ -200,7 +200,7 @@ class SendLog(Base):
     contact_id: Mapped[int] = mapped_column(ForeignKey("contacts.id", ondelete="CASCADE"), nullable=False)
     template_id: Mapped[Optional[int]] = mapped_column(ForeignKey("templates.id", ondelete="SET NULL"), nullable=True)
     sent_at: Mapped[datetime.datetime] = mapped_column(DateTime, default=datetime.datetime.utcnow)
-    status: Mapped[str] = mapped_column(String(50), default="sent")
+    status: Mapped[str] = mapped_column(Text, default="sent")
     message_id: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     channel: Mapped[str] = mapped_column(String(50), default="cold_mail")  # cold_mail | job_application
 

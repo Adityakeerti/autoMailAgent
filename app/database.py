@@ -62,6 +62,8 @@ async def init_db():
         "ALTER TABLE settings ADD COLUMN browser_type VARCHAR(50) DEFAULT 'brave'",
         "ALTER TABLE settings ADD COLUMN browser_custom_path VARCHAR(512)",
         "ALTER TABLE settings ADD COLUMN browser_cdp_port INTEGER DEFAULT 9222",
+        # send_log.status length extension for diagnostics
+        "ALTER TABLE send_log ALTER COLUMN status TYPE TEXT",
     ]
     for sql in migrations:
         try:
