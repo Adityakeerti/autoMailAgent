@@ -257,7 +257,15 @@ async def send_queued_item(
         c = await render_contact_email(c.id, None, db)
 
     # Send immediately
-    success = await send_contact_email_via_smtp(c, db)
+    try:
+        success = await send_contact_email_via_smtp(c, db)
+    except Exception as e:
+        import traceback
+        tb_str = traceback.format_exc()
+        raise HTTPException(
+            status_code=500,
+            detail=f"Unhandled dispatch error: {str(e)}\n{tb_str}"
+        )
     if not success:
         log_res = await db.execute(
             select(SendLog).where(SendLog.contact_id == c.id).order_by(SendLog.sent_at.desc())
