@@ -37,7 +37,7 @@ def main():
             resp = httpx.post(f"{BASE_URL}/auth/login", json={
                 "email": email,
                 "password": password
-            }, timeout=15.0)
+            }, timeout=60.0)
             if resp.status_code != 200:
                 print(f"[ERROR] Login failed ({resp.status_code}): {resp.text}")
                 sys.exit(1)
@@ -61,7 +61,7 @@ def main():
     # 1. Fetch settings to see what is currently configured
     print("\n1. Fetching current user settings...")
     try:
-        settings_resp = httpx.get(f"{BASE_URL}/settings", headers=headers, timeout=15.0)
+        settings_resp = httpx.get(f"{BASE_URL}/settings", headers=headers, timeout=60.0)
         if settings_resp.status_code == 200:
             st = settings_resp.json()
             print("Settings currently configured on server:")
@@ -71,6 +71,19 @@ def main():
             print(f" - Has SMTP Password Saved: {st.get('has_smtp_password')}")
             print(f" - Has Google OAuth Connected: {st.get('has_google_oauth')}")
             print(f" - Send Mode: {st.get('send_mode')}")
+            
+            # Fetch debug settings
+            try:
+                debug_resp = httpx.get(f"{BASE_URL}/debug-settings", headers=headers, timeout=60.0)
+                if debug_resp.status_code == 200:
+                    dbg = debug_resp.json()
+                    print("\nDebug Columns in Database:")
+                    print(f" - google_refresh_token_enc is null: {dbg.get('google_refresh_token_enc_is_null')}")
+                    print(f" - google_refresh_token_enc start: {dbg.get('google_refresh_token_enc_val')}")
+                    print(f" - smtp_password_enc is null: {dbg.get('smtp_password_enc_is_null')}")
+                    print(f" - smtp_password_enc start: {dbg.get('smtp_password_enc_val')}")
+            except Exception:
+                pass
         else:
             print(f"[ERROR] Failed to fetch settings ({settings_resp.status_code}): {settings_resp.text}")
             sys.exit(1)
@@ -94,7 +107,7 @@ def main():
     
     contact_id = None
     try:
-        contact_resp = httpx.post(f"{BASE_URL}/contacts", headers=headers, json=contact_payload, timeout=15.0)
+        contact_resp = httpx.post(f"{BASE_URL}/contacts", headers=headers, json=contact_payload, timeout=60.0)
         if contact_resp.status_code == 201:
             contact_data = contact_resp.json()
             contact_id = contact_data["id"]
@@ -109,7 +122,7 @@ def main():
     # 3. Personalize email template
     print(f"\n3. Personalizing email for contact ID {contact_id}...")
     try:
-        pers_resp = httpx.post(f"{BASE_URL}/queue/{contact_id}/personalize", headers=headers, timeout=15.0)
+        pers_resp = httpx.post(f"{BASE_URL}/queue/{contact_id}/personalize", headers=headers, timeout=60.0)
         if pers_resp.status_code == 200:
             pers_data = pers_resp.json()
             print("[SUCCESS] Email personalized!")
@@ -126,7 +139,7 @@ def main():
     # 4. Dispatch email immediately
     print(f"\n4. Triggering immediate dispatch (Send Now) for contact ID {contact_id}...")
     try:
-        dispatch_resp = httpx.post(f"{BASE_URL}/queue/{contact_id}/dispatch", headers=headers, timeout=15.0)
+        dispatch_resp = httpx.post(f"{BASE_URL}/queue/{contact_id}/dispatch", headers=headers, timeout=60.0)
         if dispatch_resp.status_code == 200:
             print("\n" + "=" * 60)
             print("🎉 SUCCESS! Email sent successfully!")
