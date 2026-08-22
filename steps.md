@@ -470,3 +470,10 @@ Follow in order. Do not skip ahead — each step depends on the one before it. D
 - **Nested Queue Selection:** Moved the AI Personalized Queue and Generic/Unverified Queue to inline sub-tabs within the "Approval Queue" view.
 - **Selection Safety:** Resets selection checkboxes automatically whenever main tabs or sub-tabs are toggled.
 - **Verified Build:** Executed `npm run build` with zero compiler/syntax errors, and all python tests passed successfully.
+
+## Step 52 — Attach Resume PDF to All Outreach Emails (DONE)
+
+- **Resume Attachment:** Automatically attaches the user's latest uploaded resume PDF to all outgoing emails.
+- **Gmail & SMTP Support:** Integrated into the core `MIMEMultipart` builder in `smtp_sender.py` so it applies seamlessly to both Google OAuth2 HTTPS dispatches and traditional SMTP sends.
+- **Professional File Naming:** Named dynamically based on the user's full name from `context_profile` (e.g., `Resume - John Doe.pdf`), falling back to `Resume.pdf` if blank.
+- **Testing:** Verified that the python test suite passes successfully.
