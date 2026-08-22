@@ -462,3 +462,11 @@ Follow in order. Do not skip ahead — each step depends on the one before it. D
 - **Cloud Firewall Error Handling:** Caught socket/network connection exceptions (`[Errno 101] Network is unreachable`, `[Errno 110]`, timeouts) during `smtplib` sending in `smtp_sender.py` and saved clear status in `SendLog`: *"Outbound SMTP port {smtp_port} is blocked by cloud server (Render). Connect Google OAuth in Settings to send emails via HTTPS."*
 - **Diagnostic Tips in test.py:** Updated `test.py` with explicit checks for `Network is unreachable`, `Errno 101`, and `blocked by cloud server`, advising users to connect via Google OAuth to use HTTPS-based email sending.
 - **Verification:** Ran local test runner `python run_tests.py` (11/11 test suites passed) and verified remote API dispatch behavior.
+
+## Step 51 — Simplify Contacts & Approval Queue UX (DONE)
+
+- **UX Simplification:** Tabbed views introduced to reduce visual load and clutter.
+- **Top-Level Tabs:** Created two top-level navigation tabs: "Approval Queue" and "Contacts Directory".
+- **Nested Queue Selection:** Moved the AI Personalized Queue and Generic/Unverified Queue to inline sub-tabs within the "Approval Queue" view.
+- **Selection Safety:** Resets selection checkboxes automatically whenever main tabs or sub-tabs are toggled.
+- **Verified Build:** Executed `npm run build` with zero compiler/syntax errors, and all python tests passed successfully.
