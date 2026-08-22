@@ -478,3 +478,10 @@ Follow in order. Do not skip ahead — each step depends on the one before it. D
 - **Frontend UI Input:** Added a "Resume Link" text input field inside the profile form in the Resume & Context tab.
 - **Email Body Replacement & Fallback:** Removed PDF attachments from SMTP sender and updated the template renderer to replace the `{{RESUME_LINK}}` placeholder. If the placeholder is absent but a resume link is present, it automatically appends `Resume: <url>` to the bottom of the email body.
 - **Testing:** Verified that the python test suite passes successfully.
+
+## Step 53 — Reset & Clear Pipeline Data (DONE)
+
+- **API Endpoint:** Created `POST /settings/clear-pipeline` to empty `Contact`, `ScrapeQueue`, `SendLog`, `JobListing`, and `JobApplication` tables for the user.
+- **Data Preservation:** Preserves personal info, custom experiences, projects, achievements, preferences, uploaded resumes, credentials, and templates.
+- **Client & UI Integration:** Added client API method in `api.ts` and rendered a warning card + confirmation dialog at the bottom of the Settings view.
+- **Testing & Verification:** Created integration tests validating database clearance, and verified that frontend build and all python test suites pass successfully.

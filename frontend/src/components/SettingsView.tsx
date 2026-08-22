@@ -18,6 +18,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onLoadingChange }) =
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState('');
+  const [clearing, setClearing] = useState(false);
 
   const loadSettings = async () => {
     onLoadingChange?.(true);
@@ -54,6 +55,24 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onLoadingChange }) =
     }
   };
 
+  const handleClearPipeline = async () => {
+    if (!window.confirm("WARNING: This will permanently delete all your cold mail contacts, logs, and scraper records. This action cannot be undone. Are you sure you want to proceed?")) {
+      return;
+    }
+    setClearing(true);
+    onLoadingChange?.(true);
+    setMsg('');
+    try {
+      const res = await api.clearPipeline();
+      setMsg(res.message || 'Pipeline data cleared successfully!');
+    } catch (err: any) {
+      setMsg('Error clearing data: ' + err.message);
+    } finally {
+      setClearing(false);
+      onLoadingChange?.(false);
+    }
+  };
+
 
 
   return (
@@ -74,7 +93,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onLoadingChange }) =
           <SkeletonCard height="180px" />
         </>
       ) : (
-        <form onSubmit={handleSave}>
+        <>
+          <form onSubmit={handleSave}>
           {/* Sending Mode & Schedule */}
           <div className="card">
             <div className="card-header">
@@ -259,7 +279,34 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onLoadingChange }) =
             )}
           </button>
         </form>
-      )}
+
+        {/* Reset & Clear Pipeline Data Card */}
+        <div className="card" style={{ marginTop: '24px', border: '1px solid rgba(220, 38, 38, 0.35)', background: 'rgba(220, 38, 38, 0.02)' }}>
+          <div className="card-header" style={{ borderBottom: '1px solid rgba(220, 38, 38, 0.15)', paddingBottom: '12px' }}>
+            <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#dc2626' }}>
+              Reset & Clear Pipeline Data
+            </h3>
+          </div>
+          <p style={{ fontSize: '13px', color: 'var(--on-surface-variant)', marginTop: '12px', marginBottom: '14px', lineHeight: '1.5' }}>
+            Permanently deletes all cold outreach contacts, scraped job listings, raw scraper queue leads, outreach dispatch logs, and application history.
+            <br />
+            <span style={{ fontWeight: 600 }}>Preserved data:</span> Your profile context (name, experience, projects, achievements, preferences), credentials, resumes, and email templates will remain untouched.
+          </p>
+          <button
+            type="button"
+            className="btn"
+            style={{ background: '#dc2626', color: '#ffffff', border: 'none', padding: '10px 18px', fontWeight: 600 }}
+            onClick={handleClearPipeline}
+            disabled={clearing}
+          >
+            {clearing ? (
+              <><Loader2 size={16} className="spin-icon" /> Clearing Data...</>
+            ) : (
+              "Clear Pipeline Data"
+            )}
+          </button>
+        </div>
+      </>)}
     </div>
   );
 };

@@ -151,3 +151,26 @@ async def update_settings(data: SettingsUpdate, current_user: User = Depends(get
         browser_custom_path=st.browser_custom_path,
         browser_cdp_port=st.browser_cdp_port or 9222
     )
+
+@router.post("/clear-pipeline")
+async def clear_pipeline(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    """Clears all pipeline data (contacts, scraper queue, logs, job listings/applications) except personal info, settings, and templates"""
+    from sqlalchemy import delete
+    from app.models import Contact, ScrapeQueue, SendLog, JobListing, JobApplication
+
+    user_id = current_user.id
+
+    # 1. Delete contacts
+    await db.execute(delete(Contact).where(Contact.user_id == user_id))
+    # 2. Delete scrape queue items
+    await db.execute(delete(ScrapeQueue).where(ScrapeQueue.user_id == user_id))
+    # 3. Delete send logs
+    await db.execute(delete(SendLog).where(SendLog.user_id == user_id))
+    # 4. Delete job applications
+    await db.execute(delete(JobApplication).where(JobApplication.user_id == user_id))
+    # 5. Delete job listings
+    await db.execute(delete(JobListing).where(JobListing.user_id == user_id))
+
+    await db.commit()
+
+    return {"message": "Pipeline cleared successfully! Your profile context, SMTP settings, templates, and resumes have been preserved."}

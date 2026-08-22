@@ -60,6 +60,7 @@ export const api = {
   // Settings
   getSettings: () => request<any>("/settings"),
   updateSettings: (data: any) => request<any>("/settings", { method: "PUT", body: JSON.stringify(data) }),
+  clearPipeline: () => request<any>("/settings/clear-pipeline", { method: "POST" }),
 
   // Resumes & Context
   uploadResume: (formData: FormData, mode: string = "keep_unique") => request<any>(`/resume/upload?mode=${mode}`, { method: "POST", body: formData }),
