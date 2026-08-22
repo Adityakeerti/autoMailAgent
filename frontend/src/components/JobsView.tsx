@@ -97,7 +97,7 @@ interface PortalStatusPanelProps {
   loading: boolean;
   onRefresh: () => void;
   onConfigUpdate: (data: { browser_type: string; browser_cdp_port?: number; browser_custom_path?: string }) => Promise<void>;
-  onLaunch: () => Promise<void>;
+  onLaunch: (browserType: string, port: number, customPath?: string) => Promise<void>;
   launchLoading: boolean;
 }
 
@@ -107,6 +107,8 @@ function PortalStatusPanel({ status, loading, onRefresh, onConfigUpdate, onLaunc
   const [customPathInput, setCustomPathInput] = useState(status?.detected_path || '');
   const [portInput, setPortInput] = useState(status?.port || 9222);
   const [copied, setCopied] = useState(false);
+
+  const currentBrowser = status?.browser_type || 'brave';
 
   useEffect(() => {
     if (status) {
@@ -132,7 +134,7 @@ function PortalStatusPanel({ status, loading, onRefresh, onConfigUpdate, onLaunc
   const handlePortBlur = async () => {
     if (status && portInput !== status.port) {
       await onConfigUpdate({
-        browser_type: status.browser_type || 'brave',
+        browser_type: currentBrowser,
         browser_cdp_port: portInput,
         browser_custom_path: customPathInput || undefined,
       });
@@ -142,14 +144,12 @@ function PortalStatusPanel({ status, loading, onRefresh, onConfigUpdate, onLaunc
   const handlePathBlur = async () => {
     if (status && customPathInput !== status.detected_path) {
       await onConfigUpdate({
-        browser_type: status.browser_type || 'brave',
+        browser_type: currentBrowser,
         browser_cdp_port: portInput,
         browser_custom_path: customPathInput || undefined,
       });
     }
   };
-
-  const currentBrowser = status?.browser_type || 'brave';
   const cdpReachable = status?.cdp_reachable || false;
   const launchCommands = status?.launch_commands;
 
@@ -202,7 +202,7 @@ function PortalStatusPanel({ status, loading, onRefresh, onConfigUpdate, onLaunc
         {!cdpReachable && (
           <button
             className="btn btn-primary btn-sm"
-            onClick={onLaunch}
+            onClick={() => onLaunch(currentBrowser, portInput, customPathInput || undefined)}
             disabled={launchLoading || loading}
             style={{ padding: '4px 12px', fontSize: 12 }}
           >
@@ -489,9 +489,16 @@ export const JobsView: React.FC<Props> = ({ onLoadingChange }) => {
     }
   };
 
-  const handleLaunchBrowser = async () => {
+  const handleLaunchBrowser = async (browserType: string, port: number, customPath?: string) => {
     setLaunchLoading(true);
     try {
+      // First save the current configurations to avoid any input race conditions
+      await api.updateBrowserConfig({
+        browser_type: browserType,
+        browser_cdp_port: port,
+        browser_custom_path: customPath || undefined,
+      });
+
       const res = await api.launchBrowser();
       if (res && res.message) {
         alert(res.message);
