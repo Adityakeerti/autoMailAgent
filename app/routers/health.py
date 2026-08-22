@@ -53,5 +53,19 @@ async def debug_logs(current_user: User = Depends(get_current_user), db: AsyncSe
         for l in logs
     ]
 
+from app.models import Contact, ScrapeQueue, JobListing, JobApplication
+from sqlalchemy import delete
+
+@router.post("/clean-data")
+async def clean_user_data(current_user: User = Depends(get_current_user), db: AsyncSession = Depends(get_db)):
+    await db.execute(delete(SendLog).where(SendLog.user_id == current_user.id))
+    await db.execute(delete(Contact).where(Contact.user_id == current_user.id))
+    await db.execute(delete(ScrapeQueue).where(ScrapeQueue.user_id == current_user.id))
+    await db.execute(delete(JobApplication).where(JobApplication.user_id == current_user.id))
+    await db.execute(delete(JobListing).where(JobListing.user_id == current_user.id))
+    await db.commit()
+    return {"status": "ok", "message": "Scraped jobs, applications, logs, and contacts have been cleaned for your user."}
+
+
 
 
