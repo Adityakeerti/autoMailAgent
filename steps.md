@@ -453,3 +453,12 @@ Follow in order. Do not skip ahead — each step depends on the one before it. D
 - **SMTP Sender Fallback Priority:** Updated `send_contact_email_via_smtp` in `app/services/smtp_sender.py` to only trigger XOAUTH2 if a Google refresh token exists AND no standard SMTP App Password is configured (`use_xoauth2 = bool(st.google_refresh_token_enc) and not bool(st.smtp_password_enc)`).
 - **HTTPS Gmail API Fallback:** Routed Google OAuth (XOAUTH2) email dispatches via the official Gmail API (HTTPS over port 443) instead of SMTP. This bypasses outbound SMTP port blocks (25, 465, 587) enforced on Render's free tier.
 - **Verification:** Re-ran all backend tests successfully and verified the frontend builds with 0 compile errors.
+
+## Step 50 — Fix Mail Sending Mechanism & Cloud SMTP Port Block Diagnostics (DONE)
+
+**Goal:** Resolve mail sending failures caused by Render firewall blocking outbound TCP SMTP ports 587/465, prioritize Google OAuth HTTPS sending when available, and provide actionable diagnostic messaging in `test.py`.
+
+- **OAuth Priority over SMTP:** Updated `send_contact_email_via_smtp` in `app/services/smtp_sender.py` so `use_xoauth2 = bool(st and st.google_refresh_token_enc)`. If a user has Google OAuth connected, sending via Gmail API (HTTPS over port 443) is prioritized because HTTPS is open on Render while raw SMTP ports (587, 465, 25) are blocked.
+- **Cloud Firewall Error Handling:** Caught socket/network connection exceptions (`[Errno 101] Network is unreachable`, `[Errno 110]`, timeouts) during `smtplib` sending in `smtp_sender.py` and saved clear status in `SendLog`: *"Outbound SMTP port {smtp_port} is blocked by cloud server (Render). Connect Google OAuth in Settings to send emails via HTTPS."*
+- **Diagnostic Tips in test.py:** Updated `test.py` with explicit checks for `Network is unreachable`, `Errno 101`, and `blocked by cloud server`, advising users to connect via Google OAuth to use HTTPS-based email sending.
+- **Verification:** Ran local test runner `python run_tests.py` (11/11 test suites passed) and verified remote API dispatch behavior.

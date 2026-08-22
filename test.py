@@ -162,12 +162,15 @@ def main():
                 pass
 
             print("\nDiagnostics suggestion:")
-            if "SMTP authentication failed" in dispatch_resp.text:
+            if "Network is unreachable" in dispatch_resp.text or "blocked by cloud server" in dispatch_resp.text or "Errno 101" in dispatch_resp.text or "Errno 110" in dispatch_resp.text:
+                print(" -> Cloud server (Render) blocks outbound SMTP ports 587 & 465 to prevent spam abuse.")
+                print(" -> Solution: Log in with Google ('Sign in with Google') in the web app settings to use HTTPS-based email sending via Google OAuth.")
+            elif "SMTP authentication failed" in dispatch_resp.text:
                 print(" -> Check your SMTP App Password in Settings. Ensure 2-Factor Auth is enabled on your Gmail account and you are using a generated 'App Password', NOT your primary login password.")
-            elif "XOAUTH2 authentication failed" in dispatch_resp.text:
-                print(" -> Stale Google OAuth credentials detected. Save a new SMTP password in the Settings page to clear Google OAuth tokens and force standard password-based sending.")
+            elif "XOAUTH2 authentication failed" in dispatch_resp.text or "Google OAuth token expired" in dispatch_resp.text:
+                print(" -> Stale Google OAuth credentials detected. Click 'Connect Google OAuth' in Settings to refresh your Google OAuth token.")
             elif "SMTP not configured" in dispatch_resp.text:
-                print(" -> Go to the Settings page and enter your SMTP Host (smtp.gmail.com), Port (587), Username, and App Password, then click Save.")
+                print(" -> Go to the Settings page and enter your SMTP Host (smtp.gmail.com), Port (587), Username, and App Password, or connect via Google OAuth, then click Save.")
     except Exception as e:
         print(f"[ERROR] Connection failed during dispatch: {e}")
 

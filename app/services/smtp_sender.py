@@ -36,7 +36,10 @@ async def send_contact_email_via_smtp(contact: Contact, db: AsyncSession) -> boo
     res = await db.execute(select(Setting).where(Setting.user_id == user_id))
     st = res.scalar_one_or_none()
 
-    if not st or not st.smtp_host or not st.smtp_user:
+    # Determine if XOAUTH2 (Google OAuth via Gmail API HTTPS) is available
+    use_xoauth2 = bool(st and st.google_refresh_token_enc)
+
+    if not st or (not use_xoauth2 and (not st.smtp_host or not st.smtp_user)):
         logger.error(f"SMTP not configured for user {user_id}. Cannot send email to {contact.email}.")
         db.add(SendLog(
             user_id=user_id,
@@ -48,13 +51,10 @@ async def send_contact_email_via_smtp(contact: Contact, db: AsyncSession) -> boo
         await db.commit()
         return False
 
-    smtp_host = st.smtp_host
+    smtp_host = st.smtp_host or "smtp.gmail.com"
     smtp_port = st.smtp_port or 587
-    smtp_user = st.smtp_user
+    smtp_user = st.smtp_user or ""
 
-    # --- Determine authentication method ---
-    # Priority: Google XOAUTH2 (if refresh_token present and no SMTP password is configured) > App Password > fail
-    use_xoauth2 = bool(st.google_refresh_token_enc) and not bool(st.smtp_password_enc)
     access_token: str | None = None
 
     if use_xoauth2:
@@ -100,7 +100,7 @@ async def send_contact_email_via_smtp(contact: Contact, db: AsyncSession) -> boo
     # --- Send ---
     if use_xoauth2:
         try:
-            # Send using Gmail API (HTTPS) to bypass Render SMTP port blocks
+            # Send using Gmail API (HTTPS over port 443) to bypass Render SMTP port blocks
             import httpx
             # Convert email to raw base64url format
             raw_message = base64.urlsafe_b64encode(msg.as_bytes()).decode("utf-8")
@@ -179,12 +179,18 @@ async def send_contact_email_via_smtp(contact: Contact, db: AsyncSession) -> boo
             return False
 
         except Exception as e:
+            err_str = str(e)
+            if "Network is unreachable" in err_str or "[Errno 101]" in err_str or "[Errno 110]" in err_str or "timed out" in err_str:
+                err_detail = f"Outbound SMTP port {smtp_port} is blocked by cloud server (Render). Connect Google OAuth in Settings to send emails via HTTPS."
+            else:
+                err_detail = f"SMTP error: {err_str[:120]}"
+
             logger.error(f"Failed sending email via SMTP for user {user_id}: {e}")
             db.add(SendLog(
                 user_id=user_id,
                 contact_id=contact.id,
                 sent_at=datetime.datetime.utcnow(),
-                status=f"failed: {str(e)[:120]}",
+                status=f"failed: {err_detail}",
                 message_id=message_id
             ))
             await db.commit()
