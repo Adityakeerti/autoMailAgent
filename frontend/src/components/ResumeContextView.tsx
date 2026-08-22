@@ -557,6 +557,10 @@ export const ResumeContextView: React.FC<ResumeContextViewProps> = ({ onLoadingC
                   <label className="form-label" style={{ fontSize: '12px', fontWeight: 600 }}>GitHub URL</label>
                   <input type="text" className="form-input" value={profile.github_url || ''} onChange={(e) => setProfile({ ...profile, github_url: e.target.value })} placeholder="github.com/Adityakeerti" />
                 </div>
+                <div className="form-group">
+                  <label className="form-label" style={{ fontSize: '12px', fontWeight: 600 }}>Resume Link</label>
+                  <input type="text" className="form-input" value={profile.resume_link || ''} onChange={(e) => setProfile({ ...profile, resume_link: e.target.value })} placeholder="e.g. drive.google.com/..." />
+                </div>
               </div>
               <button type="submit" className="btn btn-secondary btn-sm" style={{ marginTop: '14px', padding: '6px 14px' }} disabled={savingProfile}>
                 {savingProfile ? (

@@ -83,9 +83,10 @@ async def render_contact_email(contact_id: int, template_id: Optional[int], db: 
         dynamic_placeholders = {}
     else:
         dynamic_placeholders = await generate_personalized_placeholders(contact, template, db)
-
+ 
     # Static map
     company_display = contact.company if _company_confidence(contact.company) == "high" else "your company"
+    resume_link = prof.resume_link if prof and prof.resume_link else ""
     placeholder_map = {
         "RECIPIENT_NAME": contact.name or "Hiring Manager",
         "COMPANY": company_display,
@@ -93,18 +94,23 @@ async def render_contact_email(contact_id: int, template_id: Optional[int], db: 
         "USER_NAME": user_name,
         "PORTFOLIO_URL": portfolio_url,
         "GITHUB_URL": github_url,
+        "RESUME_LINK": resume_link,
         "PERSONAL_HOOK": dynamic_placeholders.get("PERSONAL_HOOK", ""),
         "RELEVANT_PROJECT_LINE": dynamic_placeholders.get("RELEVANT_PROJECT_LINE", ""),
         "WHY_THIS_COMPANY": dynamic_placeholders.get("WHY_THIS_COMPANY", "")
     }
-
+ 
     subject = template.subject_template
     body = template.body_template
-
+ 
     for key, val in placeholder_map.items():
         subject = subject.replace(f"{{{{{key}}}}}", str(val))
         body = body.replace(f"{{{{{key}}}}}", str(val))
 
+    # Append resume link at the bottom if not present as placeholder
+    if resume_link and "{{RESUME_LINK}}" not in template.body_template:
+        body += f"\n\nResume: {resume_link}"
+ 
     contact.subject = subject
     contact.body = body
     contact.personalized_data = dynamic_placeholders

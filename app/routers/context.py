@@ -18,6 +18,7 @@ class ProfileSchema(BaseModel):
     portfolio_url: Optional[str] = None
     github_url: Optional[str] = None
     email: Optional[str] = None
+    resume_link: Optional[str] = None
 
 class ExperienceCreate(BaseModel):
     title: str
@@ -64,7 +65,8 @@ async def get_profile(current_user: User = Depends(get_current_user), db: AsyncS
         grad_year=cp.grad_year,
         portfolio_url=cp.portfolio_url,
         github_url=cp.github_url,
-        email=cp.email
+        email=cp.email,
+        resume_link=cp.resume_link
     )
 
 @router.put("/profile", response_model=ProfileSchema)
@@ -81,6 +83,7 @@ async def update_profile(data: ProfileSchema, current_user: User = Depends(get_c
     if data.portfolio_url is not None: cp.portfolio_url = data.portfolio_url
     if data.github_url is not None: cp.github_url = data.github_url
     if data.email is not None: cp.email = data.email
+    if data.resume_link is not None: cp.resume_link = data.resume_link
 
     await db.commit()
     await db.refresh(cp)
@@ -90,7 +93,8 @@ async def update_profile(data: ProfileSchema, current_user: User = Depends(get_c
         grad_year=cp.grad_year,
         portfolio_url=cp.portfolio_url,
         github_url=cp.github_url,
-        email=cp.email
+        email=cp.email,
+        resume_link=cp.resume_link
     )
 
 # --- Experience Routes ---

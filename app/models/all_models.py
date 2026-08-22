@@ -85,6 +85,7 @@ class ContextProfile(Base):
     portfolio_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     github_url: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     email: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    resume_link: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
 
     user: Mapped["User"] = relationship("User", back_populates="context_profile")
 

@@ -97,37 +97,6 @@ async def send_contact_email_via_smtp(contact: Contact, db: AsyncSession) -> boo
     msg["Message-ID"] = message_id
     msg.attach(MIMEText(contact.body or "", "plain"))
 
-    # Attach user's latest resume PDF if available
-    try:
-        import os
-        from email.mime.base import MIMEBase
-        from email import encoders
-        from app.services.job_applicator import get_latest_resume_path
-
-        resume_path = await get_latest_resume_path(user_id, db)
-        if resume_path and os.path.exists(resume_path):
-            with open(resume_path, "rb") as f:
-                part = MIMEBase("application", "octet-stream")
-                part.set_payload(f.read())
-            encoders.encode_base64(part)
-            
-            attachment_name = "Resume.pdf"
-            prof_res = await db.execute(select(ContextProfile).where(ContextProfile.user_id == user_id))
-            prof = prof_res.scalar_one_or_none()
-            if prof and prof.full_name:
-                clean_name = "".join(c for c in prof.full_name if c.isalnum() or c in (" ", "-", "_")).strip()
-                if clean_name:
-                    attachment_name = f"Resume - {clean_name}.pdf"
-            
-            part.add_header(
-                "Content-Disposition",
-                f"attachment; filename=\"{attachment_name}\""
-            )
-            msg.attach(part)
-            logger.info(f"Attached resume PDF '{attachment_name}' to email to {contact.email}")
-    except Exception as e:
-        logger.error(f"Failed to attach resume to email to {contact.email}: {e}")
-
     # --- Send ---
     if use_xoauth2:
         try:

@@ -51,6 +51,8 @@ async def init_db():
     migrations = [
         # context_profile.full_name
         "ALTER TABLE context_profile ADD COLUMN full_name VARCHAR(255)",
+        # context_profile.resume_link
+        "ALTER TABLE context_profile ADD COLUMN resume_link VARCHAR(512)",
         # settings.job_agent_enabled
         "ALTER TABLE settings ADD COLUMN job_agent_enabled BOOLEAN DEFAULT FALSE",
         # job_preferences thresholds

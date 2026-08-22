@@ -471,9 +471,10 @@ Follow in order. Do not skip ahead — each step depends on the one before it. D
 - **Selection Safety:** Resets selection checkboxes automatically whenever main tabs or sub-tabs are toggled.
 - **Verified Build:** Executed `npm run build` with zero compiler/syntax errors, and all python tests passed successfully.
 
-## Step 52 — Attach Resume PDF to All Outreach Emails (DONE)
+## Step 52 — Resume Link Field & In-Email Replacement (DONE)
 
-- **Resume Attachment:** Automatically attaches the user's latest uploaded resume PDF to all outgoing emails.
-- **Gmail & SMTP Support:** Integrated into the core `MIMEMultipart` builder in `smtp_sender.py` so it applies seamlessly to both Google OAuth2 HTTPS dispatches and traditional SMTP sends.
-- **Professional File Naming:** Named dynamically based on the user's full name from `context_profile` (e.g., `Resume - John Doe.pdf`), falling back to `Resume.pdf` if blank.
+- **Database Model & Migration:** Added `resume_link` to `ContextProfile` model and dynamic startup SQL schema migrations.
+- **Backend Schema & API:** Expatched `resume_link` support in Pydantic `ProfileSchema` and routes.
+- **Frontend UI Input:** Added a "Resume Link" text input field inside the profile form in the Resume & Context tab.
+- **Email Body Replacement & Fallback:** Removed PDF attachments from SMTP sender and updated the template renderer to replace the `{{RESUME_LINK}}` placeholder. If the placeholder is absent but a resume link is present, it automatically appends `Resume: <url>` to the bottom of the email body.
 - **Testing:** Verified that the python test suite passes successfully.
