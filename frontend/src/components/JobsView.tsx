@@ -263,20 +263,25 @@ function PortalStatusPanel({ status, loading, onRefresh, onConfigUpdate, onLaunc
             </div>
 
             {/* Custom Binary Path Input */}
-            {currentBrowser === 'custom' && (
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label" style={{ fontSize: 12 }}>Custom Executable Path</label>
-                <input
-                  type="text"
-                  className="form-input"
-                  placeholder="e.g. C:\Program Files\Vivaldi\Application\vivaldi.exe"
-                  value={customPathInput}
-                  onChange={e => setCustomPathInput(e.target.value)}
-                  onBlur={handlePathBlur}
-                  style={{ padding: '6px 10px', fontSize: 13 }}
-                />
-              </div>
-            )}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label" style={{ fontSize: 12 }}>
+                Custom Executable Path {currentBrowser !== 'custom' ? '(Optional Override)' : '(Required)'}
+              </label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder={
+                  currentBrowser === 'brave' ? "e.g. C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe" :
+                  currentBrowser === 'chrome' ? "e.g. C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" :
+                  currentBrowser === 'edge' ? "e.g. C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" :
+                  "e.g. C:\\Program Files\\Vivaldi\\Application\\vivaldi.exe"
+                }
+                value={customPathInput}
+                onChange={e => setCustomPathInput(e.target.value)}
+                onBlur={handlePathBlur}
+                style={{ padding: '6px 10px', fontSize: 13 }}
+              />
+            </div>
           </div>
         </div>
       )}

@@ -232,12 +232,23 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onLoadingChange }) =
               </div>
             </div>
 
-            {st.browser_type === 'custom' && (
-              <div className="form-group" style={{ margin: 0 }}>
-                <label className="form-label">Custom Executable Path</label>
-                <input type="text" className="form-input" placeholder="e.g. C:\Program Files\Vivaldi\Application\vivaldi.exe" value={st.browser_custom_path || ''} onChange={(e) => setSt({ ...st, browser_custom_path: e.target.value })} />
-              </div>
-            )}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label className="form-label">
+                Custom Executable Path {st.browser_type !== 'custom' ? '(Optional Override)' : '(Required)'}
+              </label>
+              <input
+                type="text"
+                className="form-input"
+                placeholder={
+                  st.browser_type === 'brave' ? "e.g. C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe" :
+                  st.browser_type === 'chrome' ? "e.g. C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe" :
+                  st.browser_type === 'edge' ? "e.g. C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe" :
+                  "e.g. C:\\Program Files\\Vivaldi\\Application\\vivaldi.exe"
+                }
+                value={st.browser_custom_path || ''}
+                onChange={(e) => setSt({ ...st, browser_custom_path: e.target.value })}
+              />
+            </div>
           </div>
 
           <button type="submit" className="btn btn-primary btn-lg" disabled={loading} style={{ padding: '12px 24px' }}>
