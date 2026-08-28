@@ -1,5 +1,5 @@
 import React from 'react';
-import { LayoutDashboard, FileText, Search, Users, FileCode, Settings, LogOut, Briefcase, Bot } from 'lucide-react';
+import { LayoutDashboard, FileText, Search, Users, FileCode, Settings, LogOut, Briefcase } from 'lucide-react';
 import { removeToken, api } from '../api';
 
 interface SidebarProps {
@@ -13,7 +13,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, setActiveTab, userE
   const navItems = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'resume', label: 'Resume & Context', icon: FileText },
-    { id: 'jobs', label: 'Job Agent', icon: Bot },
+    // { id: 'jobs', label: 'Job Agent', icon: Bot },
     { id: 'scrapers', label: 'Lead Finder', icon: Search },
     { id: 'contacts', label: 'Contacts & Queue', icon: Users },
     { id: 'templates', label: 'Email Templates', icon: FileCode },

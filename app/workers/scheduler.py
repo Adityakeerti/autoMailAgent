@@ -139,7 +139,7 @@ def start_scheduler():
     if not scheduler.running:
         scheduler.add_job(global_scheduler_tick, 'interval', minutes=1, id='automail_queue_job')
         scheduler.add_job(global_batch_scraping, 'interval', hours=6, id='automail_batch_scrape')
-        scheduler.add_job(global_job_pipeline, 'interval', hours=6, id='job_application_pipeline')
+        # scheduler.add_job(global_job_pipeline, 'interval', hours=6, id='job_application_pipeline')
         scheduler.start()
 
 def stop_scheduler():

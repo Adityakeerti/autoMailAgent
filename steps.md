@@ -485,3 +485,11 @@ Follow in order. Do not skip ahead — each step depends on the one before it. D
 - **Data Preservation:** Preserves personal info, custom experiences, projects, achievements, preferences, uploaded resumes, credentials, and templates.
 - **Client & UI Integration:** Added client API method in `api.ts` and rendered a warning card + confirmation dialog at the bottom of the Settings view.
 - **Testing & Verification:** Created integration tests validating database clearance, and verified that frontend build and all python test suites pass successfully.
+
+## Step 54 — Suppress Job Agent & Fix LLM Decommissioned Models (DONE)
+
+- **Suppress Job Agent:** Commented out the "Job Agent" navigation link in `Sidebar.tsx` and the Browser & Automation Settings card in `SettingsView.tsx` so the non-functional feature is suppressed from production/UI. Also commented out the `job_application_pipeline` background job registration in `scheduler.py` so it does not trigger scheduled runs.
+- **Fix LLM Models (Area 1 & 2):** Resolved model error responses by updating decommissioned/unsupported model IDs in `app/services/llm.py`:
+  - Updated Groq DeepSeek reasoning model from decommissioned `deepseek-r1-distill-llama-70b` to active `deepseek-r1-distill-qwen-32b`.
+  - Updated Gemini model fallback from decommissioned/invalid `gemini-2.0-flash-exp` and `gemini-1.5-flash-latest` to active `gemini-2.0-flash` and `gemini-1.5-pro` under the `v1beta` endpoint.
+- **Verification:** Re-compiled frontend via `npm run build` with zero compiler errors, and successfully ran the backend test suites.

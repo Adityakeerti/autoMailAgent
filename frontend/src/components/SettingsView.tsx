@@ -216,7 +216,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onLoadingChange }) =
             </div>
           </div>
 
-          {/* Browser & Automation Settings */}
+          {/* Browser & Automation Settings - suppressed from UI
           <div className="card">
             <div className="card-header">
               <h3 className="card-title" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -270,6 +270,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({ onLoadingChange }) =
               />
             </div>
           </div>
+          */}
 
           <button type="submit" className="btn btn-primary btn-lg" disabled={loading} style={{ padding: '12px 24px' }}>
             {loading ? (

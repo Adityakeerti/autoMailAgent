@@ -157,11 +157,11 @@ class MultiFallbackLLM:
                     raise ValueError("GROQ_API_KEY not set")
 
                 if provider == "groq_deepseek_70b":
-                    model = "deepseek-r1-distill-llama-70b"
+                    model = "qwen/qwen3.8-27b"
                 elif provider == "groq_llama_70b":
-                    model = "llama-3.3-70b-versatile"
+                    model = "openai/gpt-oss-120b"
                 else:
-                    model = "llama-3.1-8b-instant"
+                    model = "openai/gpt-oss-20b"
 
                 url = "https://api.groq.com/openai/v1/chat/completions"
                 headers = {"Authorization": f"Bearer {self.groq_key}", "Content-Type": "application/json"}
@@ -230,7 +230,7 @@ class MultiFallbackLLM:
             elif provider.startswith("gemini"):
                 if not self.gemini_key:
                     raise ValueError("GEMINI_API_KEY not set")
-                model = "gemini-2.0-flash-exp" if "flash" in provider else "gemini-1.5-flash-latest"
+                model = "gemini-3.6-flash" if "flash" in provider else "gemini-1.5-pro"
                 url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={self.gemini_key}"
                 full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
                 payload = {
