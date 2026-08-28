@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Code, Globe, Share2, CheckCircle, Loader2, Sparkles, MailSearch } from 'lucide-react';
+import { Search, Share2, CheckCircle, Loader2, MailSearch } from 'lucide-react';
 import { api } from '../api';
 import { SkeletonTable } from './Skeleton';
 
@@ -10,7 +10,7 @@ interface ScraperViewProps {
 
 
 export const ScraperView: React.FC<ScraperViewProps> = ({ onLoadingChange, onRefresh }) => {
-  const [activeChannel, setActiveChannel] = useState<'auto_discover' | 'career' | 'github' | 'job_portal' | 'linkedin' | 'enrichment'>('auto_discover');
+  const [activeChannel, setActiveChannel] = useState<'auto_discover' | 'career' | 'github' | 'job_portal' | 'linkedin' | 'enrichment'>('linkedin');
   const [inputVal, setInputVal] = useState('');
   const [enrichDomain, setEnrichDomain] = useState('');
   const [enrichFirstName, setEnrichFirstName] = useState('');
@@ -19,7 +19,6 @@ export const ScraperView: React.FC<ScraperViewProps> = ({ onLoadingChange, onRef
   const [queue, setQueue] = useState<any[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
   const [loading, setLoading] = useState(false);
-  const [autoDiscovering, setAutoDiscovering] = useState(false);
   const [normalizing, setNormalizing] = useState(false);
   const [msg, setMsg] = useState('');
 
@@ -40,6 +39,7 @@ export const ScraperView: React.FC<ScraperViewProps> = ({ onLoadingChange, onRef
     loadQueue();
   }, []);
 
+  /*
   const handleAutoDiscover = async () => {
     setAutoDiscovering(true);
     onLoadingChange?.(true);
@@ -71,6 +71,7 @@ export const ScraperView: React.FC<ScraperViewProps> = ({ onLoadingChange, onRef
       onLoadingChange?.(false);
     }
   };
+  */
 
 
   const handleRunScraper = async (e: React.FormEvent) => {
@@ -144,36 +145,18 @@ export const ScraperView: React.FC<ScraperViewProps> = ({ onLoadingChange, onRef
       <div className="page-header">
         <div>
           <h1 className="page-title">Lead Discovery & Enrichment Hub</h1>
-          <p className="page-subtitle">Auto-discover job leads using saved preferences, or search for emails via Apollo.io, GitHub & LinkedIn</p>
+          <p className="page-subtitle">Search and discover leads via LinkedIn</p>
         </div>
       </div>
 
       {msg && <div className="alert alert-info">{msg}</div>}
 
-      {/* Auto Discover Callout Card */}
-      <div className="card" style={{ background: 'linear-gradient(135deg, var(--surface-container-low) 0%, rgba(66, 133, 244, 0.08) 100%)', border: '1px solid rgba(66, 133, 244, 0.3)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
-          <div>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: 0, fontSize: '18px', fontWeight: 600 }}>
-              <Sparkles size={20} color="#4285F4" /> 1-Click Keyword Auto-Discover (LinkedIn + Naukri + Indeed)
-            </h3>
-            <p style={{ fontSize: '13px', color: 'var(--on-surface-variant)', marginTop: '4px', margin: 0 }}>
-              Automatically searches job listings matching your saved target roles & preferences with human-pace delay & anti-ban protection.
-            </p>
-          </div>
-          <button className="btn btn-primary" onClick={handleAutoDiscover} disabled={autoDiscovering}>
-            {autoDiscovering ? (
-              <><Loader2 size={16} className="spin-icon" /> Searching Job Portals...</>
-            ) : (
-              <><Sparkles size={16} /> Run Keyword Auto-Discover</>
-            )}
-          </button>
-        </div>
-      </div>
+      {/* Auto-Discover card removed as scraper layer is deactivated */}
 
       {/* Lead Discovery Source Tabs */}
       <div className="card">
         <div style={{ display: 'flex', gap: '8px', marginBottom: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '12px', flexWrap: 'wrap' }}>
+          {/*
           <button className={`btn ${activeChannel === 'auto_discover' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveChannel('auto_discover')}>
             <Sparkles size={16} /> Auto-Discover Info
           </button>
@@ -189,11 +172,13 @@ export const ScraperView: React.FC<ScraperViewProps> = ({ onLoadingChange, onRef
           <button className={`btn ${activeChannel === 'job_portal' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveChannel('job_portal')}>
             <Search size={16} /> Job Search results
           </button>
+          */}
           <button className={`btn ${activeChannel === 'linkedin' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveChannel('linkedin')}>
             <Share2 size={16} /> LinkedIn Listing
           </button>
         </div>
 
+        {/*
         {activeChannel === 'auto_discover' && (
           <div style={{ padding: '12px', background: 'var(--surface-container-low)', borderRadius: '8px', fontSize: '14px' }}>
             <p><strong>Keyword Auto-Discover:</strong> Uses your saved target roles in <em>Resume & Context</em> to search for live job openings on LinkedIn Jobs, Naukri, and Indeed.</p>
@@ -202,6 +187,7 @@ export const ScraperView: React.FC<ScraperViewProps> = ({ onLoadingChange, onRef
             </button>
           </div>
         )}
+        */}
 
         {activeChannel === 'enrichment' && (
           <form onSubmit={handleRunEnrichment} style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
@@ -239,7 +225,7 @@ export const ScraperView: React.FC<ScraperViewProps> = ({ onLoadingChange, onRef
           </form>
         )}
 
-        {(loading || autoDiscovering) && (
+        {loading && (
           <div style={{ marginTop: '16px', padding: '12px', background: 'var(--surface-container-low)', borderRadius: '6px', fontSize: '13px', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 600 }}>
             <Loader2 size={16} className="spin-icon" />
             <span>Searching and validating target leads with human-pace delay...</span>

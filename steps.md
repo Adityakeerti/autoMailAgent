@@ -493,3 +493,10 @@ Follow in order. Do not skip ahead — each step depends on the one before it. D
   - Updated Groq DeepSeek reasoning model from decommissioned `deepseek-r1-distill-llama-70b` to active `deepseek-r1-distill-qwen-32b`.
   - Updated Gemini model fallback from decommissioned/invalid `gemini-2.0-flash-exp` and `gemini-1.5-flash-latest` to active `gemini-2.0-flash` and `gemini-1.5-pro` under the `v1beta` endpoint.
 - **Verification:** Re-compiled frontend via `npm run build` with zero compiler errors, and successfully ran the backend test suites.
+
+## Step 55 — Deactivate Scraper Layer except LinkedIn & Rephrase UI (DONE)
+
+- **Deactivated Scrapers:** Replaced the backend implementations of all scraper functions (`scrape_career_page`, `scrape_github`, `scrape_job_portal`, `auto_discover_jobs`, `enrich_email_apollo`, `find_and_enrich_tech_lead`, `scrape_hn_hiring`, `scrape_arbeitnow`, `scrape_ats_direct`, and `run_batch_scraping`) in [scrapers.py](file:///C:/Users/adity/Desktop/AutoMail/app/services/scrapers.py) with clean, empty placeholders returning zero results immediately.
+- **LinkedIn Scraper Intact:** Retained the LinkedIn public listing scraper (`scrape_linkedin`) and the main normalizer logic (`normalize_scrape_queue`) so that session-based LinkedIn session keys can be saved and utilized for connection rebuilding.
+- **UI Clean-up:** Modified [ScraperView.tsx](file:///C:/Users/adity/Desktop/AutoMail/frontend/src/components/ScraperView.tsx) to set the default tab channel to `"linkedin"`, remove/comment out the "1-Click Keyword Auto-Discover" banner, hide/comment out the non-LinkedIn channels (Auto-Discover Info, Apollo Lookup, Career Webpage, GitHub Context, Job Search Portal), and remove unused Lucide icon imports to satisfy strict TypeScript compilation checks.
+- **Verification:** Frontend successfully compiled with 0 TypeScript/Vite errors via `npm run build`, and all 11 backend test suites in `run_tests.py` completed and passed successfully.
